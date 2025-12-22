@@ -1,89 +1,124 @@
 "use client";
 
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import { Building2, Landmark, Users, UserCircle, LogOut, ArrowRight } from 'lucide-react';
+import Image from "next/image";
+import Link from "next/link";
+import { MapPin, Zap } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export default function PerfilPage() {
-  const { user, userData, logout } = useAuth();
-  const router = useRouter();
+export default function Home() {
+  const [city, setCity] = useState("bcn");
+  const [currentImage, setCurrentImage] = useState(0);
 
-  // LOGOUT: Desconecta y manda al HOME [2025-12-21]
-  const handleLogout = async () => {
-    await logout();
-    router.push('/');
-  };
+  const images = [
+    "/hero-1.jpg",
+    "/hero-2.jpg",
+    "/hero-3.jpg"
+  ];
 
-  // SI ESTÁ LOGUEADO: Mostramos su Panel o Perfil según rol
-  if (user) {
-    return (
-      <div className="min-h-screen bg-black p-6 pt-20 text-white">
-        <h1 className="text-3xl font-black italic mb-2">HOLA, {userData?.nombre || 'VIBER'}</h1>
-        <p className="text-zinc-500 mb-8 uppercase text-xs tracking-widest">Rol: {userData?.role}</p>
-        
-        <div className="space-y-4">
-          {/* Aquí iría el acceso al Dashboard específico según rol */}
-          <button className="w-full bg-zinc-900 border border-white/10 p-4 rounded-2xl flex items-center justify-between">
-            <span className="font-bold">Ir a mi Panel de Control</span>
-            <ArrowRight size={18} className="text-yellow-400" />
-          </button>
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % images.length);
+    }, 8000); 
+    return () => clearInterval(timer);
+  }, [images.length]);
 
-          <button 
-            onClick={handleLogout}
-            className="w-full bg-red-900/20 border border-red-900/50 text-red-500 p-4 rounded-2xl flex items-center justify-center gap-2 font-bold mt-10"
-          >
-            <LogOut size={18} /> SALIR
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // SI ES ANÓNIMO: Pantalla de ID (Selección de Perfil) [2025-12-21]
   return (
-    <div className="min-h-screen bg-black p-6 pt-20 flex flex-col items-center">
-      <div className="text-center mb-10">
-        <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Acceso Nitvibes</h2>
-        <p className="text-zinc-500 text-sm">Selecciona tu perfil de acceso</p>
+    <main className="relative min-h-screen flex flex-col overflow-hidden bg-black">
+      
+      {/* --- SLIDER DE IMÁGENES --- */}
+      <div className="absolute inset-0 z-0">
+        {images.map((src, index) => (
+          <div
+            key={src}
+            className={`absolute inset-0 transition-opacity duration-[1500ms] ease-in-out ${
+              index === currentImage ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <Image
+              src={src}
+              alt={`Nightlife vibes ${index + 1}`}
+              fill
+              className="object-cover brightness-[0.4] object-center"
+              priority={index === 0}
+            />
+          </div>
+        ))}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black" />
       </div>
 
-      <div className="w-full max-w-sm space-y-4">
-        {/* Opción VIBER */}
-        <button onClick={() => router.push('/login')} className="w-full bg-white text-black p-6 rounded-3xl flex items-center gap-4 transition-transform active:scale-95">
-          <UserCircle size={32} />
-          <div className="text-left">
-            <p className="font-black text-lg leading-none">VIBER</p>
-            <p className="text-xs opacity-60">Acceso usuarios</p>
-          </div>
-        </button>
+      {/* --- HEADER --- */}
+      <header className="absolute top-0 left-0 right-0 z-20 p-6 grid grid-cols-3 items-center">
+        {/* Icono N izquierda */}
+        <div className="flex justify-start">
+            <div className="bg-yellow-400 text-black px-1.5 py-0.5 rounded font-bold shadow-lg shadow-yellow-400/20">N</div>
+        </div>
 
-        {/* Opción PARTNER */}
-        <button onClick={() => router.push('/login?role=partner')} className="w-full bg-zinc-900 border border-white/10 text-white p-6 rounded-3xl flex items-center gap-4 transition-transform active:scale-95">
-          <Building2 size={32} className="text-yellow-400" />
-          <div className="text-left">
-            <p className="font-black text-lg leading-none italic">PARTNER</p>
-            <p className="text-xs text-zinc-500">Venues & Bares</p>
-          </div>
-        </button>
+        {/* NITVIBES: Ahora es el elemento GRANDE del header [cite: 2025-12-23] */}
+        <div className="flex justify-center">
+            <span className="text-yellow-400 font-black tracking-tighter italic text-3xl md:text-5xl drop-shadow-[0_0_15px_rgba(250,204,21,0.4)]">
+                NITVIBES
+            </span>
+        </div>
 
-        {/* Opción GOV / TEAM */}
-        <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => router.push('/login?role=gov')} className="bg-zinc-900 border border-white/10 text-white p-4 rounded-3xl flex flex-col items-center gap-2">
-                <Landmark size={24} className="text-blue-400" />
-                <span className="font-bold text-xs">GOV</span>
-            </button>
-            <button onClick={() => router.push('/login?role=team')} className="bg-zinc-900 border border-white/10 text-white p-4 rounded-3xl flex flex-col items-center gap-2">
-                <Users size={24} className="text-purple-400" />
-                <span className="font-bold text-xs">TEAM</span>
-            </button>
+        {/* Selector de ciudad: Abreviaturas BCN, MAD, VAL [cite: 2025-12-23] */}
+        <div className="flex justify-end">
+            <Select value={city} onValueChange={setCity}>
+              <SelectTrigger className="w-[80px] md:w-[100px] bg-black/40 border-white/10 text-white backdrop-blur-md h-9 text-xs font-bold">
+                <MapPin className="mr-1 h-3 w-3 text-yellow-400" />
+                <SelectValue placeholder="BCN" />
+              </SelectTrigger>
+              <SelectContent className="bg-zinc-900 border-white/10 text-white">
+                <SelectItem value="bcn">BCN</SelectItem>
+                <SelectItem value="mad" disabled className="opacity-40 text-[10px]">MAD</SelectItem>
+                <SelectItem value="val" disabled className="opacity-40 text-[10px]">VAL</SelectItem>
+              </SelectContent>
+            </Select>
+        </div>
+      </header>
+
+      {/* --- CONTENIDO HERO --- */}
+      <div className="relative z-10 flex-grow flex flex-col items-center justify-center text-center px-4">
+        <div className="animate-in fade-in slide-in-from-bottom-6 duration-1000 mt-12">
+            
+            {/* Título: Ahora es el elemento PEQUEÑO (tamaño de marca anterior) [cite: 2025-12-23] */}
+            <h1 className="text-xl md:text-2xl font-black text-white mb-8 tracking-[0.2em] leading-tight uppercase opacity-90">
+              Tu Noche <span className="text-yellow-400 italic">Comienza Aquí</span>
+            </h1>
+
+            {/* Subtítulo con más margen superior para ver el Hero [cite: 2025-12-23] */}
+            <p className="text-sm md:text-lg text-zinc-300 mb-12 max-w-lg font-medium drop-shadow-md mx-auto leading-relaxed">
+              Siente el Vibe de tu ciudad y descubre <br className="hidden md:block"/> los mejores lugares en tiempo real.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 w-full max-w-[280px] sm:w-auto mx-auto">
+              <Link href="/mapa" className="bg-green-600 hover:bg-green-500 text-white font-black py-3 px-8 rounded-full transition-all hover:scale-105 flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest shadow-xl shadow-green-900/40">
+                <MapPin size={14} /> Ir al Mapa
+              </Link>
+              
+              <Link href="/vibes" className="bg-transparent border-2 border-yellow-400 text-white font-black py-3 px-8 rounded-full hover:bg-white/5 transition-all flex items-center justify-center gap-2 uppercase text-[10px] tracking-widest backdrop-blur-sm">
+                <Zap size={14} className="text-yellow-400" /> Ver Vibes
+              </Link>
+            </div>
+        </div>
+
+        {/* INDICADORES */}
+        <div className="absolute bottom-12 flex gap-3">
+            {images.map((_, i) => (
+                <button
+                    key={i}
+                    onClick={() => setCurrentImage(i)}
+                    className={`h-1 rounded-full transition-all duration-700 ${i === currentImage ? "w-8 bg-yellow-400" : "w-2 bg-white/20"}`}
+                />
+            ))}
         </div>
       </div>
-
-      <div className="mt-10">
-        <button onClick={() => router.push('/register')} className="text-yellow-400 font-bold text-sm hover:underline">
-          ¿No tienes cuenta? Regístrate aquí
-        </button>
-      </div>
-    </div>
+    </main>
   );
 }
