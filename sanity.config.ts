@@ -2,8 +2,8 @@
 
 import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
-import { visionTool } from '@sanity/vision'
 
+// Definimos el esquema básico
 const vibeSchema = {
   name: 'post',
   title: 'Vibe (Post)',
@@ -50,7 +50,7 @@ export default defineConfig({
   },
 
   plugins: [
-    structureTool(),
-    visionTool(),
+    structureTool(), 
+    // Hemos eliminado visionTool() que es lo que rompía todo
   ],
 })
