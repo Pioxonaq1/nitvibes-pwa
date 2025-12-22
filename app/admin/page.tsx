@@ -44,8 +44,8 @@ export default function AdminDashboard() {
             {/* Badge de Usuario */}
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-pink-600 to-purple-700 rounded-full flex items-center justify-center font-bold text-xs shadow-lg shadow-purple-900/20">
-                    {/* Corrección: Usamos displayName o la primera letra del email */}
-                    {user?.displayName?.substring(0, 2).toUpperCase() || user?.email?.substring(0, 2).toUpperCase() || 'AD'}
+                    {/* 👇 CORRECCIÓN APLICADA AQUÍ: Lógica segura para iniciales */}
+                    {(user?.displayName || user?.email || 'AD').substring(0, 2).toUpperCase()}
                 </div>
                 <div className="hidden sm:block">
                     <p className="text-[10px] font-bold text-white uppercase tracking-wider">{user?.email || 'CONTACT@KONNEKTWERK.COM'}</p>
