@@ -2,93 +2,87 @@
 
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { ROUTES } from '@/lib/constants';
-import { LogOut, MapPin, Edit2, User } from 'lucide-react';
-import { Button } from "@/components/ui/button";
+import { Building2, Landmark, Users, UserCircle, LogOut, ArrowRight } from 'lucide-react';
 
 export default function PerfilPage() {
-  const { user, logout } = useAuth();
+  const { user, userData, logout } = useAuth();
   const router = useRouter();
-  const [viberData, setViberData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  // Cargar datos reales de Rowy
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (user?.uid) {
-        try {
-          const docRef = doc(db, "viber", user.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setViberData(docSnap.data());
-          }
-        } catch (error) {
-          console.error("Error cargando perfil:", error);
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, [user]);
-
+  // LOGOUT: Desconecta y manda al HOME [2025-12-21]
   const handleLogout = async () => {
     await logout();
-    router.push(ROUTES.HOME);
+    router.push('/');
   };
 
-  if (!user) {
-     router.push(ROUTES.HOME); 
-     return null;
+  // SI ESTÁ LOGUEADO: Mostramos su Panel o Perfil según rol
+  if (user) {
+    return (
+      <div className="min-h-screen bg-black p-6 pt-20 text-white">
+        <h1 className="text-3xl font-black italic mb-2">HOLA, {userData?.nombre || 'VIBER'}</h1>
+        <p className="text-zinc-500 mb-8 uppercase text-xs tracking-widest">Rol: {userData?.role}</p>
+        
+        <div className="space-y-4">
+          {/* Aquí iría el acceso al Dashboard específico según rol */}
+          <button className="w-full bg-zinc-900 border border-white/10 p-4 rounded-2xl flex items-center justify-between">
+            <span className="font-bold">Ir a mi Panel de Control</span>
+            <ArrowRight size={18} className="text-yellow-400" />
+          </button>
+
+          <button 
+            onClick={handleLogout}
+            className="w-full bg-red-900/20 border border-red-900/50 text-red-500 p-4 rounded-2xl flex items-center justify-center gap-2 font-bold mt-10"
+          >
+            <LogOut size={18} /> SALIR
+          </button>
+        </div>
+      </div>
+    );
   }
 
+  // SI ES ANÓNIMO: Pantalla de ID (Selección de Perfil) [2025-12-21]
   return (
-    <div className="min-h-screen bg-black text-white p-6 pb-24">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-black italic">MI PERFIL</h1>
-        <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500 bg-red-900/10 hover:bg-red-900/30">
-          <LogOut size={20} />
-        </Button>
-      </header>
+    <div className="min-h-screen bg-black p-6 pt-20 flex flex-col items-center">
+      <div className="text-center mb-10">
+        <h2 className="text-2xl font-black text-white italic uppercase tracking-tighter">Acceso Nitvibes</h2>
+        <p className="text-zinc-500 text-sm">Selecciona tu perfil de acceso</p>
+      </div>
 
-      {/* Tarjeta de Usuario */}
-      <div className="bg-zinc-900/50 border border-white/10 rounded-3xl p-6 text-center relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-purple-900/20 to-transparent"></div>
-        
-        <div className="relative z-10 mx-auto w-24 h-24 rounded-full bg-zinc-800 border-4 border-black flex items-center justify-center overflow-hidden mb-4">
-            {viberData?.foto ? (
-                <img src={viberData.foto} alt="Perfil" className="w-full h-full object-cover" />
-            ) : (
-                <User size={40} className="text-zinc-500" />
-            )}
+      <div className="w-full max-w-sm space-y-4">
+        {/* Opción VIBER */}
+        <button onClick={() => router.push('/login')} className="w-full bg-white text-black p-6 rounded-3xl flex items-center gap-4 transition-transform active:scale-95">
+          <UserCircle size={32} />
+          <div className="text-left">
+            <p className="font-black text-lg leading-none">VIBER</p>
+            <p className="text-xs opacity-60">Acceso usuarios</p>
+          </div>
+        </button>
+
+        {/* Opción PARTNER */}
+        <button onClick={() => router.push('/login?role=partner')} className="w-full bg-zinc-900 border border-white/10 text-white p-6 rounded-3xl flex items-center gap-4 transition-transform active:scale-95">
+          <Building2 size={32} className="text-yellow-400" />
+          <div className="text-left">
+            <p className="font-black text-lg leading-none italic">PARTNER</p>
+            <p className="text-xs text-zinc-500">Venues & Bares</p>
+          </div>
+        </button>
+
+        {/* Opción GOV / TEAM */}
+        <div className="grid grid-cols-2 gap-4">
+            <button onClick={() => router.push('/login?role=gov')} className="bg-zinc-900 border border-white/10 text-white p-4 rounded-3xl flex flex-col items-center gap-2">
+                <Landmark size={24} className="text-blue-400" />
+                <span className="font-bold text-xs">GOV</span>
+            </button>
+            <button onClick={() => router.push('/login?role=team')} className="bg-zinc-900 border border-white/10 text-white p-4 rounded-3xl flex flex-col items-center gap-2">
+                <Users size={24} className="text-purple-400" />
+                <span className="font-bold text-xs">TEAM</span>
+            </button>
         </div>
+      </div>
 
-        <h2 className="text-xl font-bold mb-1">{viberData?.nombre || user.displayName || "Usuario Viber"}</h2>
-        <p className="text-zinc-500 text-sm mb-4">{user.email}</p>
-
-        {viberData?.biografia && (
-            <p className="text-gray-300 text-sm italic mb-4">"{viberData.biografia}"</p>
-        )}
-
-        <div className="flex justify-center gap-2 mb-6">
-            <span className="px-3 py-1 rounded-full bg-zinc-800 text-xs text-zinc-400 flex items-center gap-1">
-                <MapPin size={12} /> {viberData?.ciudad || "Ciudad desconocida"}
-            </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-             <Button variant="outline" className="border-zinc-700 hover:bg-zinc-800 text-xs" onClick={() => router.push('/business/login')}>
-                Soy Partner
-             </Button>
-             <Button variant="outline" className="border-zinc-700 hover:bg-zinc-800 text-xs" onClick={() => router.push('/gov/login')}>
-                Soy Gov
-             </Button>
-        </div>
+      <div className="mt-10">
+        <button onClick={() => router.push('/register')} className="text-yellow-400 font-bold text-sm hover:underline">
+          ¿No tienes cuenta? Regístrate aquí
+        </button>
       </div>
     </div>
   );

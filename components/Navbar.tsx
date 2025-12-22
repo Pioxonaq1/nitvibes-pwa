@@ -1,0 +1,45 @@
+"use client";
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Home, Map, Zap, User, LayoutDashboard } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+
+export default function Navbar() {
+  const pathname = usePathname();
+  const { user, userData } = useAuth();
+
+  // Determinamos si el usuario tiene un rol B2B (Partner, Gov, Team) [2025-12-19]
+  const isBusinessUser = userData?.role === 'partner' || userData?.role === 'gov' || userData?.role === 'admin' || userData?.role === 'colaborador';
+
+  const navItems = [
+    { name: 'Inicio', href: '/', icon: Home },
+    { name: 'Mapa', href: '/mapa', icon: Map },
+    { name: 'Vibes', href: '/vibes', icon: Zap },
+    // Cambio dinámico: Si está logueado como Partner/Gov/Team, se llama "Panel" [2025-12-21]
+    { 
+      name: isBusinessUser ? 'Panel' : 'Perfil', 
+      href: '/perfil', 
+      icon: isBusinessUser ? LayoutDashboard : User 
+    },
+  ];
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-lg border-t border-white/10 z-50">
+      <div className="flex justify-around items-center h-16 max-w-md mx-auto">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return (
+            <Link key={item.name} href={item.href} className="flex flex-col items-center gap-1">
+              <Icon size={20} className={isActive ? 'text-yellow-400' : 'text-zinc-500'} />
+              <span className={`text-[10px] font-bold uppercase tracking-tighter ${isActive ? 'text-yellow-400' : 'text-zinc-500'}`}>
+                {item.name}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
