@@ -25,16 +25,23 @@ export const ROUTES = {
   
   // Rutas de Admin
   ADMIN_LOGIN: '/admin/login',
-  ADMIN_DASHBOARD: '/admin',     // Opción 1
-  DASHBOARD_ADMIN: '/admin',     // Opción 2 (La que pedía el error)
+  ADMIN_DASHBOARD: '/admin',
+  DASHBOARD_ADMIN: '/admin',
 
-  // Rutas de Partner
-  PARTNER_DASHBOARD: '/business', // Opción 1
-  DASHBOARD_PARTNER: '/business', // Opción 2
+  // Rutas de Partner (Negocios)
+  PARTNER_DASHBOARD: '/business',
+  DASHBOARD_PARTNER: '/business',
+  BUSINESS_LOGIN: '/business/login',
 
   // Rutas de Gobierno
-  GOV_DASHBOARD: '/gov',         // Opción 1
-  DASHBOARD_GOV: '/gov',         // Opción 2
+  GOV_DASHBOARD: '/gov',
+  DASHBOARD_GOV: '/gov',
+  GOV_LOGIN: '/gov/login',
+
+  // Rutas de Usuario / Viber (La que fallaba)
+  DASHBOARD_VIBER: '/perfil',  // 👈 AQUÍ ESTÁ LA SOLUCIÓN
+  DASHBOARD_USER: '/perfil',   // Alias por si acaso
+  VIBER_DASHBOARD: '/perfil',  // Alias por si acaso
 
   // Rutas Comunes
   MAP: '/mapa',
