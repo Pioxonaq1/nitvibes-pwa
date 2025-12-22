@@ -1,0 +1,3983 @@
+
+
+--- ARCHIVO: ./components/BottomNav.tsx ---
+
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+
+export default function BottomNav() {
+  const pathname = usePathname();
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u && !u.isAnonymous) {
+        setUser(u);
+      } else {
+        setUser(null);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  if (pathname.includes("/login") || pathname.includes("/register")) return null;
+
+  // Icono SVG para el Panel (Cuadrícula)
+  const PanelIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+      <path fillRule="evenodd" d="M3 6a3 3 0 013-3h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm9.75 0a3 3 0 013-3H18a3 3 0 013 3v2.25a3 3 0 01-3 3h-2.25a3 3 0 01-3-3V6zM3 15.75a3 3 0 013-3h2.25a3 3 0 013 3V18a3 3 0 01-3 3H6a3 3 0 01-3-3v-2.25zm9.75 0a3 3 0 013-3H18a3 3 0 013 3V18a3 3 0 01-3 3h-2.25a3 3 0 01-3-3v-2.25z" clipRule="evenodd" />
+    </svg>
+  );
+
+  return (
+    <nav className="fixed bottom-0 left-0 w-full bg-black border-t border-gray-900 flex justify-around items-center py-3 z-50 pb-safe safe-area-pb">
+      
+      <Link href="/" className={`flex flex-col items-center gap-1 ${pathname === "/" ? "text-orange-500" : "text-gray-500"}`}>
+        <span className="text-xl">🏠</span>
+        <span className="text-[10px] font-bold uppercase">Inicio</span>
+      </Link>
+
+      <Link href="/mapa" className={`flex flex-col items-center gap-1 ${pathname === "/mapa" ? "text-blue-500" : "text-gray-500"}`}>
+        <span className="text-xl">🗺️</span>
+        <span className="text-[9px] font-bold uppercase">Mapa</span>
+      </Link>
+
+      <Link href="/vibes" className={`flex flex-col items-center gap-1 ${pathname === "/vibes" ? "text-yellow-400" : "text-gray-500"}`}>
+        <span className="text-xl">✨</span>
+        <span className="text-[9px] font-bold uppercase">Vibes</span>
+      </Link>
+
+      {user ? (
+        // LOGUEADO: Muestra Icono de Panel y texto morado
+        <Link href="/perfil" className={`flex flex-col items-center gap-1 ${pathname.includes("/perfil") || pathname.includes("/business") ? "text-purple-500" : "text-gray-500"}`}>
+          <PanelIcon />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">PANEL</span>
+        </Link>
+      ) : (
+        // NO LOGUEADO: Muestra Icono de Usuario
+        <Link href="/perfil" className={`flex flex-col items-center gap-1 ${pathname === "/perfil" ? "text-white" : "text-gray-500"}`}>
+          <span className="text-xl">👤</span>
+          <span className="text-[10px] font-bold uppercase">Perfil</span>
+        </Link>
+      )}
+
+    </nav>
+  );
+}
+
+--- ARCHIVO: ./components/WifiProximityAlert.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import * as turf from "@turf/turf"; // Recuerda: npm install @turf/turf
+
+// Tipado de la Venue
+interface VenueLocation {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  wifiSSID?: string;
+  wifiPass?: string;
+}
+
+export default function WifiProximityAlert() {
+  const [venues, setVenues] = useState<VenueLocation[]>([]);
+  const [currentVenue, setCurrentVenue] = useState<VenueLocation | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  
+  // Reglas de distancia (en metros)
+  const POPUP_TRIGGER_DISTANCE = 10; // Radio para lanzar la invitación WIFI
+  const GEOFENCE_RADIUS = 25;        // Radio de "zona de influencia" (para uso futuro)
+
+  // 1. Cargar coordenadas de las discotecas al iniciar
+  useEffect(() => {
+    const fetchVenues = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "venues"));
+        const data = snapshot.docs.map(d => ({ 
+          id: d.id, 
+          ...d.data().location, // location debe tener latitude y longitude
+          name: d.data().name,
+          wifiSSID: d.data().wifiSSID || "WIFI-INVITADOS", // Valor por defecto si no hay
+        })) as VenueLocation[];
+        setVenues(data);
+      } catch (error) {
+        console.error("Error cargando venues para geofence:", error);
+      }
+    };
+    fetchVenues();
+  }, []);
+
+  // 2. Vigilar posición del usuario
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    // Chequeamos cada 5 segundos para mayor precisión al caminar
+    const interval = setInterval(() => {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const userPoint = turf.point([pos.coords.longitude, pos.coords.latitude]);
+        
+        // Revisar cada venue
+        venues.forEach(venue => {
+          if (!venue.latitude || !venue.longitude) return;
+
+          const venuePoint = turf.point([venue.longitude, venue.latitude]);
+          const distance = turf.distance(userPoint, venuePoint, { units: 'meters' });
+
+          // LÓGICA DE DETECCIÓN
+          // Si estamos dentro del radio de 10 metros y no es la venue que ya estamos viendo
+          if (distance <= POPUP_TRIGGER_DISTANCE && currentVenue?.id !== venue.id) {
+            setCurrentVenue(venue);
+            setShowModal(true);
+            
+            // Vibración para avisar (si el navegador lo soporta)
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            
+            console.log(`🎯 Entrando en zona WIFI de ${venue.name} (Distancia: ${distance.toFixed(1)}m)`);
+          }
+          
+          // Aquí podríamos añadir lógica para los 25m (GEOFENCE_RADIUS) en el futuro
+          // Ej: if (distance <= GEOFENCE_RADIUS) { ... activar modo "cerca" ... }
+        });
+      }, (err) => {
+        console.warn("Error obteniendo posición para Wifi Alert", err);
+      }, {
+        enableHighAccuracy: true, // Importante para detectar 10 metros
+        timeout: 5000,
+        maximumAge: 0
+      });
+    }, 5000); 
+
+    return () => clearInterval(interval);
+  }, [venues, currentVenue]);
+
+  if (!showModal || !currentVenue) return null;
+
+  return (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in zoom-in-95">
+      <div className="bg-[#111] border border-green-500/50 rounded-3xl p-8 max-w-sm text-center shadow-[0_0_50px_rgba(16,185,129,0.2)] relative overflow-hidden">
+        
+        {/* Efecto de radar de fondo */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-green-500/10 rounded-full animate-ping pointer-events-none"></div>
+
+        <div className="relative z-10">
+          <div className="text-5xl mb-4 animate-bounce">📶</div>
+          
+          <h2 className="text-2xl font-black text-white italic tracking-tighter mb-2">
+            ¿ESTÁS EN <span className="text-green-500 uppercase">{currentVenue.name}</span>?
+          </h2>
+          
+          <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+            Te hemos detectado dentro del local. Conéctate a la red para validar tu asistencia y mejorar tu cobertura.
+          </p>
+
+          <div className="bg-gray-900 p-4 rounded-xl border border-white/10 mb-6">
+             <p className="text-xs text-gray-500 uppercase font-bold mb-1">Red Wi-Fi Detectada</p>
+             <p className="text-white font-mono text-lg tracking-wide text-green-400">{currentVenue.wifiSSID}</p>
+          </div>
+
+          <div className="space-y-3">
+            <button 
+              onClick={() => {
+                // Aquí iría la lógica de Check-in real en Firebase
+                console.log("✅ Check-in confirmado en", currentVenue.name);
+                setShowModal(false);
+              }}
+              className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg transform active:scale-95 border border-green-400/20"
+            >
+              SÍ, CONECTAR Y ENTRAR 🔥
+            </button>
+            
+            <button 
+              onClick={() => setShowModal(false)}
+              className="text-gray-500 text-xs hover:text-white underline"
+            >
+              Cerrar (Falsa alarma)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/CrowdScanner.tsx ---
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, writeBatch, doc } from "firebase/firestore";
+
+export default function CrowdScanner() {
+  const [scanning, setScanning] = useState(false);
+  const [autoMode, setAutoMode] = useState(false);
+  const [report, setReport] = useState<string>("Sistema en espera.");
+  const [lastScanTime, setLastScanTime] = useState<string>("--:--");
+
+  // 🗓️ Días para mapear JS (0=Domingo) a nuestras claves
+  const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+  // 🧠 LÓGICA MAESTRA DE APERTURA (Soporta cruce de medianoche)
+  const isVenueOpenNow = (schedule: any) => {
+    if (!schedule) return false;
+
+    const now = new Date();
+    const dayIndex = now.getDay(); // 0-6
+    const prevDayIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+
+    const currentKey = DAYS[dayIndex];
+    const prevKey = DAYS[prevDayIndex];
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // 1. COMPROBAR TURNO DE HOY (Ej: Abre 18:00 - Cierra 23:00)
+    if (schedule[currentKey] && schedule[currentKey].isOpen) {
+      const { open, close } = schedule[currentKey];
+      if (open && close) {
+        const [openH, openM] = open.split(':').map(Number);
+        const [closeH, closeM] = close.split(':').map(Number);
+        const start = openH * 60 + openM;
+        const end = closeH * 60 + closeM;
+
+        // Si no cruza medianoche (Ej: 10:00 a 22:00)
+        if (start < end) {
+          if (currentMinutes >= start && currentMinutes < end) return true;
+        } 
+        // Si cruza medianoche (Ej: 23:00 a 06:00) -> Solo nos importa si YA empezó hoy
+        else {
+          if (currentMinutes >= start) return true;
+        }
+      }
+    }
+
+    // 2. COMPROBAR TURNO DE AYER (Ej: Abrió ayer 23:00 - Cierra hoy 06:00)
+    // Si ahora son las 03:00 AM, técnicamente es el turno de ayer.
+    if (schedule[prevKey] && schedule[prevKey].isOpen) {
+      const { open, close } = schedule[prevKey];
+      if (open && close) {
+        const [openH, openM] = open.split(':').map(Number);
+        const [closeH, closeM] = close.split(':').map(Number);
+        const start = openH * 60 + openM;
+        const end = closeH * 60 + closeM;
+
+        // Solo si cruza medianoche (empieza tarde y acaba temprano)
+        if (start > end) {
+          // Estamos en el día siguiente ("hoy"), así que debe ser antes de la hora de cierre
+          if (currentMinutes < end) return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  const runScan = async () => {
+    if (scanning) return;
+    setScanning(true);
+    setReport("📡 Analizando horarios semanales...");
+    
+    try {
+      const usersSnap = await getDocs(collection(db, "user_locations"));
+      const venuesSnap = await getDocs(collection(db, "venues"));
+      const users = usersSnap.docs.map(d => d.data());
+      const venues = venuesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+
+      const batch = writeBatch(db);
+      let updatesCount = 0;
+      const RADIO_METROS = 100;
+      const R = 6371e3;
+
+      venues.forEach((venue) => {
+        // 1. 🕒 LÓGICA APERTURA SEMANAL
+        let shouldBeOpen = venue.isOpen;
+        
+        // Si tiene el nuevo formato semanal, lo usamos con prioridad
+        if (venue.weeklySchedule) {
+          shouldBeOpen = isVenueOpenNow(venue.weeklySchedule);
+        } 
+        // Fallback: Si no tiene semanal, usamos el simple antiguo (si existe)
+        else if (venue.openTime && venue.closeTime) {
+           // (Aquí podrías mantener la lógica antigua simple si quieres compatibilidad)
+        }
+
+        // 2. 📡 LÓGICA OCUPACIÓN
+        let newOccupancy = 'low';
+        
+        if (shouldBeOpen && venue.location) {
+          const lat1 = venue.location.latitude * Math.PI / 180;
+          let usersNearby = 0;
+
+          users.forEach((user) => {
+            if (!user.location) return;
+            const lat2 = user.location.latitude * Math.PI / 180;
+            const dLat = (user.location.latitude - venue.location.latitude) * Math.PI / 180;
+            const dLon = (user.location.longitude - venue.location.longitude) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1) * Math.cos(lat2) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
+            if (distance < RADIO_METROS) usersNearby++;
+          });
+
+          if (usersNearby >= 2) newOccupancy = 'medium';
+          if (usersNearby >= 5) newOccupancy = 'high';
+        }
+
+        // 3. ACTUALIZAR DB
+        if (venue.isOpen !== shouldBeOpen || (shouldBeOpen && venue.occupancy !== newOccupancy)) {
+          const venueRef = doc(db, "venues", venue.id);
+          batch.update(venueRef, { 
+            isOpen: shouldBeOpen,
+            occupancy: shouldBeOpen ? newOccupancy : 'low' 
+          });
+          updatesCount++;
+        }
+      });
+
+      if (updatesCount > 0) {
+        await batch.commit();
+        setReport(`✅ Actualizados ${updatesCount} locales.`);
+      } else {
+        setReport("💤 Horarios y aforos sincronizados.");
+      }
+      setLastScanTime(new Date().toLocaleTimeString());
+
+    } catch (error) {
+      console.error(error);
+      setReport("❌ Error al escanear.");
+    }
+    setScanning(false);
+  };
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    if (autoMode) {
+      runScan();
+      intervalId = setInterval(runScan, 30000); // 30 segundos
+    }
+    return () => clearInterval(intervalId);
+  }, [autoMode]);
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 w-full max-w-2xl shadow-2xl relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+      <div className="relative z-10">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-white flex items-center gap-2">🧠 Cerebro Semanal</h2>
+            <p className="text-gray-400 text-sm mt-1">Gestión Inteligente de Horarios & Aforos</p>
+          </div>
+          <div className={`px-3 py-1 rounded-full text-xs font-bold border transition-colors ${autoMode ? 'bg-green-500/20 border-green-500 text-green-400 animate-pulse' : 'bg-gray-800 border-gray-700 text-gray-500'}`}>
+            {autoMode ? "● ACTIVO" : "○ APAGADO"}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="bg-black/40 p-4 rounded-xl border border-gray-800">
+            <p className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Último Ciclo</p>
+            <p className="text-xl font-mono text-white mt-1">{lastScanTime}</p>
+          </div>
+          <div className="bg-black/40 p-4 rounded-xl border border-gray-800">
+            <p className="text-gray-500 text-[10px] uppercase tracking-wider font-bold">Estado</p>
+            <p className={`text-sm font-bold mt-2 ${scanning ? 'text-yellow-400' : 'text-blue-400'}`}>
+              {scanning ? "CALCULANDO..." : report}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
+          <div className="flex-1">
+            <div className="flex items-center justify-between cursor-pointer" onClick={() => setAutoMode(!autoMode)}>
+              <span className="text-white font-medium text-sm">Activar Piloto Automático</span>
+              <div className={`w-12 h-7 rounded-full flex items-center transition-colors duration-300 px-1 ${autoMode ? 'bg-purple-600' : 'bg-gray-600'}`}>
+                <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-300 ${autoMode ? 'translate-x-5' : 'translate-x-0'}`}></div>
+              </div>
+            </div>
+          </div>
+          <div className="h-8 w-[1px] bg-gray-700"></div>
+          <button onClick={runScan} disabled={scanning || autoMode} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${autoMode ? 'opacity-50 cursor-not-allowed text-gray-400' : 'bg-white text-black hover:bg-gray-200'}`}>
+            FORZAR SYNC
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/PartnerPromoStats.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+interface Props {
+  venueId: string; // ID del local logueado
+}
+
+export default function PartnerPromoStats({ venueId }: Props) {
+  const [stats, setStats] = useState({
+    accepted: 0,
+    rejected: 0,
+    reasons: {
+      not_attractive: 0,
+      dont_understand: 0,
+      not_interested: 0
+    }
+  });
+
+  useEffect(() => {
+    if (!venueId) return;
+
+    // Escuchar la colección de reacciones filtrada por ESTE local
+    const q = query(collection(db, "promo_reactions"), where("venueId", "==", venueId));
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      let accepted = 0;
+      let rejected = 0;
+      let reasons = { not_attractive: 0, dont_understand: 0, not_interested: 0 };
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.action === 'accepted') {
+          accepted++;
+        } else if (data.action === 'rejected') {
+          rejected++;
+          // Contar motivos específicos
+          if (data.reason === 'not_attractive') reasons.not_attractive++;
+          if (data.reason === 'dont_understand') reasons.dont_understand++;
+          if (data.reason === 'not_interested') reasons.not_interested++;
+        }
+      });
+
+      setStats({ accepted, rejected, reasons });
+    });
+
+    return () => unsub();
+  }, [venueId]);
+
+  const total = stats.accepted + stats.rejected;
+  const conversionRate = total > 0 ? Math.round((stats.accepted / total) * 100) : 0;
+
+  return (
+    <div className="bg-[#111] border border-gray-800 rounded-3xl p-6 mt-6">
+      <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">
+        📊 Rendimiento Flash Action
+        {total > 0 && <span className="text-xs bg-gray-800 px-2 py-1 rounded text-gray-400">En vivo</span>}
+      </h3>
+
+      {total === 0 ? (
+        <p className="text-gray-500 text-sm">Esperando interacciones de usuarios...</p>
+      ) : (
+        <div className="space-y-6">
+          
+          {/* KPIs Principales */}
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="p-4 bg-green-900/20 border border-green-500/30 rounded-2xl">
+              <div className="text-2xl font-black text-green-400">{stats.accepted}</div>
+              <div className="text-[10px] uppercase text-green-200 font-bold">Aceptadas</div>
+            </div>
+            <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-2xl">
+              <div className="text-2xl font-black text-red-400">{stats.rejected}</div>
+              <div className="text-[10px] uppercase text-red-200 font-bold">Rechazadas</div>
+            </div>
+            <div className="p-4 bg-blue-900/20 border border-blue-500/30 rounded-2xl">
+              <div className="text-2xl font-black text-blue-400">{conversionRate}%</div>
+              <div className="text-[10px] uppercase text-blue-200 font-bold">Conversión</div>
+            </div>
+          </div>
+
+          {/* Desglose de Rechazos (Feedback Valioso) */}
+          {stats.rejected > 0 && (
+            <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+              <p className="text-xs font-bold text-gray-400 uppercase mb-3">Motivos de Rechazo</p>
+              
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-300">💸 Precio no atractivo</span>
+                  <span className="font-mono text-white">{stats.reasons.not_attractive}</span>
+                </div>
+                <div className="w-full bg-gray-800 h-1 rounded-full overflow-hidden">
+                  <div className="bg-red-500 h-full" style={{ width: `${(stats.reasons.not_attractive / stats.rejected) * 100}%` }}></div>
+                </div>
+
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-gray-300">🤔 Oferta confusa</span>
+                  <span className="font-mono text-white">{stats.reasons.dont_understand}</span>
+                </div>
+                <div className="w-full bg-gray-800 h-1 rounded-full overflow-hidden">
+                  <div className="bg-orange-500 h-full" style={{ width: `${(stats.reasons.dont_understand / stats.rejected) * 100}%` }}></div>
+                </div>
+
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-gray-300">👋 No interesa</span>
+                  <span className="font-mono text-white">{stats.reasons.not_interested}</span>
+                </div>
+                <div className="w-full bg-gray-800 h-1 rounded-full overflow-hidden">
+                  <div className="bg-gray-500 h-full" style={{ width: `${(stats.reasons.not_interested / stats.rejected) * 100}%` }}></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/FlashActionReceiver.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import * as turf from "@turf/turf";
+import { useRouter } from "next/navigation";
+
+interface Venue {
+  id: string;
+  hasFlashPromo?: boolean;
+  location: { latitude: number; longitude: number };
+}
+
+export default function FlashActionReceiver() {
+  const [hasNearbyPromos, setHasNearbyPromos] = useState(false);
+  const [promoCount, setPromoCount] = useState(0);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    // Escuchar venues con promo activa
+    const unsub = onSnapshot(collection(db, "venues"), (snapshot) => {
+      const venuesData = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Venue[];
+
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const userPoint = turf.point([pos.coords.longitude, pos.coords.latitude]);
+        
+        // Filtrar cuántas hay en radio de 25m
+        const matches = venuesData.filter(venue => {
+           if (!venue.hasFlashPromo || !venue.location) return false;
+           const venuePoint = turf.point([venue.location.longitude, venue.location.latitude]);
+           const distance = turf.distance(userPoint, venuePoint, { units: 'meters' });
+           return distance <= 25; // 🎯 25 metros
+        });
+
+        if (matches.length > 0) {
+           setHasNearbyPromos(true);
+           setPromoCount(matches.length);
+           // Vibración suave (aviso)
+           if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        } else {
+           setHasNearbyPromos(false);
+        }
+      });
+    });
+
+    return () => unsub();
+  }, []);
+
+  if (!hasNearbyPromos) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-500">
+      <div className="bg-[#111] border border-yellow-500 rounded-3xl p-6 text-center shadow-[0_0_40px_rgba(234,179,8,0.4)] max-w-sm w-full">
+        
+        <div className="text-5xl mb-4 animate-bounce">🎁</div>
+        
+        <h2 className="text-xl font-black text-white uppercase italic tracking-tighter mb-2">
+          ¡OPORTUNIDADES CERCA!
+        </h2>
+        
+        <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+          Hemos detectado <strong>{promoCount} Flash Actions</strong> activas en tu zona (25m). Revisa tu panel para aceptarlas o descartarlas.
+        </p>
+
+        <div className="space-y-3">
+          <button 
+            onClick={() => {
+              setHasNearbyPromos(false); // Cerramos el modal
+              router.push('/perfil');    // Llevamos al usuario a decidir
+            }}
+            className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3.5 rounded-xl transition-all shadow-lg active:scale-95"
+          >
+            IR A MI PANEL ⚡
+          </button>
+          
+          <button 
+             onClick={() => setHasNearbyPromos(false)}
+             className="text-xs text-gray-500 hover:text-white underline"
+          >
+            Ahora no
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/RadioPlayer.tsx ---
+
+"use client";
+
+import { useState } from "react";
+
+export default function RadioPlayer() {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  return (
+    // CAMBIO: Reducimos altura (py-2) y ajustamos la posición bottom
+    <div className="fixed bottom-[60px] left-0 w-full bg-black/90 border-t border-gray-800 backdrop-blur-md z-40 px-4 py-2 flex items-center justify-between">
+      
+      {/* Info de la Canción (Más pequeña) */}
+      <div className="flex flex-col">
+        <span className="text-green-500 font-bold text-[10px] tracking-widest uppercase">
+          NITVIBES LIVE
+        </span>
+        <span className="text-gray-300 text-xs truncate max-w-[200px]">
+          Techno Bunker Session
+        </span>
+      </div>
+
+      {/* Controles (Botón Play más compacto) */}
+      <div className="flex items-center gap-4">
+        {/* Botón Play/Pause */}
+        <button 
+          onClick={() => setIsPlaying(!isPlaying)}
+          className="w-8 h-8 bg-white rounded-full flex items-center justify-center hover:scale-110 transition-transform"
+        >
+          {isPlaying ? (
+            <span className="text-black font-bold text-xs">❚❚</span>
+          ) : (
+            <span className="text-black font-bold text-xs ml-0.5">▶</span>
+          )}
+        </button>
+      </div>
+      
+      {/* Barra de progreso visual (decorativa) */}
+      <div className="absolute top-0 left-0 h-[2px] bg-gradient-to-r from-green-500 to-transparent w-full opacity-50"></div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/BottomMenu.tsx ---
+
+import Link from "next/link";
+
+export default function BottomMenu() {
+  return (
+    <nav className="fixed bottom-0 left-0 w-full bg-black border-t border-zinc-800 z-50 h-16">
+      <div className="grid grid-cols-4 h-full">
+        
+        {/* Inicio */}
+        <Link href="/" className="flex flex-col items-center justify-center text-zinc-400 hover:text-white transition">
+          <span className="text-xl">🏠</span>
+          <span className="text-[10px] mt-1">Inicio</span>
+        </Link>
+
+        {/* Mapa */}
+        <Link href="/mapa" className="flex flex-col items-center justify-center text-zinc-400 hover:text-white transition">
+          <span className="text-xl">🗺️</span>
+          <span className="text-[10px] mt-1">Mapa</span>
+        </Link>
+
+        {/* Blog */}
+        <Link href="/cronica" className="flex flex-col items-center justify-center text-zinc-400 hover:text-white transition">
+          <span className="text-xl">📰</span>
+          <span className="text-[10px] mt-1">Blog</span>
+        </Link>
+
+         {/* Perfil */}
+         <Link href="/access" className="..."> 
+   {/* Icono Perfil */}
+   <span>Perfil</span>
+</Link>
+
+      </div>
+    </nav>
+  );
+}
+
+--- ARCHIVO: ./components/VenueCard.tsx ---
+
+"use client";
+
+import Image from "next/image";
+
+export interface Venue {
+  id: string;
+  name: string;
+  description: string;
+  location: { latitude: number; longitude: number };
+  vibe: string;
+  image: string;
+  isActive: boolean;
+  isOpen: boolean;
+  occupancy?: 'low' | 'medium' | 'high';
+  // Nuevos campos
+  hasFlashPromo?: boolean;
+  flashTitle?: string;
+  flashPrice?: string;
+  flashEndTime?: any; // Firestore timestamp
+}
+
+interface VenueCardProps {
+  venue: Venue;
+  onClose: () => void;
+}
+
+export default function VenueCard({ venue, onClose }: VenueCardProps) {
+  
+  const getOccupancyInfo = () => {
+    switch (venue.occupancy) {
+      case 'low': return { text: "Espacio Libre", color: "text-green-400", bg: "bg-green-500/20", icon: "🟢" };
+      case 'medium': return { text: "Animado", color: "text-yellow-400", bg: "bg-yellow-500/20", icon: "🟡" };
+      case 'high': return { text: "A reventar", color: "text-red-400", bg: "bg-red-500/20", icon: "🔥" };
+      default: return { text: "Sin datos", color: "text-gray-400", bg: "bg-gray-800", icon: "⚪" };
+    }
+  };
+
+  const status = getOccupancyInfo();
+
+  const openMaps = () => {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${venue.location.latitude},${venue.location.longitude}`;
+    window.open(url, '_blank');
+  };
+
+  return (
+    <div className="absolute bottom-24 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-md bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-0 shadow-2xl z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 overflow-hidden">
+      
+      {/* 🟣 BANNER FLASH PROMO (DISEÑO MEJORADO) */}
+      {venue.hasFlashPromo && (
+        <div className="bg-gradient-to-r from-purple-700 via-pink-600 to-purple-700 bg-[length:200%_200%] animate-gradient-x text-white py-3 px-4 shadow-lg z-20 relative flex justify-between items-center">
+          <div className="flex flex-col leading-tight">
+            <span className="text-[10px] font-bold opacity-80 uppercase tracking-widest">⚡ Flash Offer</span>
+            <span className="font-black text-sm">{venue.flashTitle || "Oferta Especial"}</span>
+          </div>
+          <div className="bg-white text-purple-700 font-black text-lg px-3 py-1 rounded-lg shadow-sm transform -rotate-2">
+            {venue.flashPrice || "PROMO"}
+          </div>
+        </div>
+      )}
+
+      <div className="p-4 relative">
+        <button 
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          className="absolute top-4 right-4 text-white/80 hover:text-white bg-black/40 hover:bg-black/60 rounded-full p-1.5 z-10 transition-colors backdrop-blur-sm"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+
+        <div className="flex gap-4">
+          <div className="relative w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-gray-800 shadow-lg border border-gray-700">
+            <Image 
+              src={venue.image && venue.image.startsWith('http') ? venue.image : "https://via.placeholder.com/150"} 
+              alt={venue.name} fill className="object-cover" unoptimized 
+            />
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center min-w-0">
+            <h3 className="text-white font-bold text-xl leading-tight truncate pr-6">{venue.name}</h3>
+            <p className="text-gray-400 text-xs truncate mb-2">{venue.description}</p>
+            
+            <div className="flex flex-wrap gap-2">
+              <span className="bg-gray-800 text-gray-300 text-[10px] px-2 py-1 rounded-md border border-gray-700 font-medium uppercase tracking-wide">
+                {venue.vibe}
+              </span>
+              
+              {venue.isOpen && (
+                <span className={`${status.bg} ${status.color} text-[10px] px-2 py-1 rounded-md border border-white/10 font-bold uppercase tracking-wide flex items-center gap-1`}>
+                  {status.icon} {status.text}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <button 
+            onClick={openMaps}
+            className="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors border border-gray-600 flex justify-center items-center gap-2"
+          >
+            Cómo llegar 📍
+          </button>
+          
+          <button className="bg-white text-black font-bold py-2.5 rounded-xl text-sm hover:bg-gray-200 transition-colors shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+            Ver Detalles
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/FlashPromoList.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { collection, onSnapshot, addDoc, query, where, getDocs, serverTimestamp } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
+import * as turf from "@turf/turf";
+
+interface FlashVenue {
+  id: string;
+  name: string;
+  flashPromoText: string;
+  flashPrice?: number;
+  location: { latitude: number; longitude: number };
+}
+
+export default function FlashPromoList() {
+  const [promos, setPromos] = useState<FlashVenue[]>([]);
+  const [reactedPromoIds, setReactedPromoIds] = useState<string[]>([]); // Para ocultar las ya decididas
+  const [rejectModalOpen, setRejectModalOpen] = useState<string | null>(null); // ID de la promo que se está rechazando
+  const [userLoc, setUserLoc] = useState<[number, number] | null>(null);
+
+  // 1. Ubicación del usuario
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(p => setUserLoc([p.coords.longitude, p.coords.latitude]));
+  }, []);
+
+  // 2. Cargar historial de reacciones del usuario (para no mostrar promos repetidas)
+  useEffect(() => {
+    const fetchReactions = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      // Buscamos reacciones de este usuario en las últimas 24h (simple)
+      const q = query(collection(db, "promo_reactions"), where("userId", "==", user.uid));
+      const snapshot = await getDocs(q);
+      const ids = snapshot.docs.map(doc => doc.data().venueId);
+      setReactedPromoIds(ids);
+    };
+    fetchReactions();
+  }, []);
+
+  // 3. Escuchar promos y filtrarlas
+  useEffect(() => {
+    if (!userLoc) return;
+
+    const unsub = onSnapshot(collection(db, "venues"), (snapshot) => {
+      const userPoint = turf.point(userLoc);
+      
+      const activePromos = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as any))
+        .filter(v => v.hasFlashPromo) // Solo activas
+        .filter(v => !reactedPromoIds.includes(v.id)) // 🚫 Que no haya reaccionado ya
+        .filter(v => {
+          if (!v.location) return false;
+          const venuePoint = turf.point([v.location.longitude, v.location.latitude]);
+          const distance = turf.distance(userPoint, venuePoint, { units: 'meters' });
+          return distance <= 25; // 🎯 25 metros
+        })
+        .map(v => ({
+          id: v.id,
+          name: v.name,
+          flashPromoText: v.flashPromoText,
+          flashPrice: v.flashPrice || 0,
+          location: v.location
+        }));
+
+      setPromos(activePromos);
+    });
+
+    return () => unsub();
+  }, [userLoc, reactedPromoIds]);
+
+  // --- LÓGICA DE ACEPTAR / RECHAZAR ---
+
+  const handleAccept = async (venue: FlashVenue) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+      // Guardar en Firebase
+      await addDoc(collection(db, "promo_reactions"), {
+        userId: user.uid,
+        venueId: venue.id,
+        venueName: venue.name,
+        action: "accepted", // ✅
+        reason: "interested",
+        timestamp: serverTimestamp()
+      });
+      
+      // Ocultar de la lista localmente
+      setReactedPromoIds(prev => [...prev, venue.id]);
+      alert(`¡Genial! Has aceptado la oferta de ${venue.name}. Enséñalo en barra.`);
+    } catch (e) {
+      console.error("Error accepting", e);
+    }
+  };
+
+  const handleRejectConfirm = async (reason: string) => {
+    const user = auth.currentUser;
+    if (!user || !rejectModalOpen) return;
+
+    try {
+      // Guardar en Firebase el rechazo con motivo
+      await addDoc(collection(db, "promo_reactions"), {
+        userId: user.uid,
+        venueId: rejectModalOpen, // El ID guardado en el estado
+        action: "rejected", // ❌
+        reason: reason, // "not_attractive" | "dont_understand" | "not_interested"
+        timestamp: serverTimestamp()
+      });
+
+      // Limpieza
+      setReactedPromoIds(prev => [...prev, rejectModalOpen]);
+      setRejectModalOpen(null);
+    } catch (e) {
+      console.error("Error rejecting", e);
+    }
+  };
+
+  if (promos.length === 0) return (
+    <div className="p-6 text-center border border-dashed border-gray-800 rounded-xl mt-4 bg-gray-900/50">
+      <p className="text-gray-500 text-sm">No tienes ofertas pendientes cerca.</p>
+    </div>
+  );
+
+  return (
+    <div className="w-full mt-6 relative">
+      <h3 className="text-white font-bold italic flex items-center gap-2 mb-4">
+        <span className="animate-pulse text-yellow-500">⚡</span> OFERTAS DISPONIBLES ({promos.length})
+      </h3>
+
+      <div className="space-y-4">
+        {promos.map((promo) => (
+          <div key={promo.id} className="bg-[#111] border border-gray-800 p-5 rounded-2xl shadow-lg relative overflow-hidden">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h4 className="font-black text-white text-lg uppercase tracking-tight">{promo.name}</h4>
+                <p className="text-yellow-400 font-bold text-xl">{promo.flashPromoText}</p>
+                <p className="text-xs text-gray-500 mt-1">Precio: {promo.flashPrice ? `${promo.flashPrice}€` : 'GRATIS'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <button 
+                onClick={() => setRejectModalOpen(promo.id)}
+                className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-3 rounded-xl text-sm transition-colors border border-gray-700"
+              >
+                ✖ RECHAZAR
+              </button>
+              <button 
+                onClick={() => handleAccept(promo)}
+                className="bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl text-sm transition-colors shadow-lg shadow-green-900/20"
+              >
+                ✔ ACEPTAR
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* MODAL DE RECHAZO (Selector de motivos) */}
+      {rejectModalOpen && (
+        <div className="fixed inset-0 z-[100001] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-[#1A1A1A] w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-6 border-t sm:border border-gray-700 shadow-2xl animate-in slide-in-from-bottom-10">
+            
+            <h3 className="text-white font-bold text-lg mb-2 text-center">¿Por qué no te interesa?</h3>
+            <p className="text-gray-500 text-xs text-center mb-6">Tu opinión ayuda al local a mejorar.</p>
+
+            <div className="space-y-3">
+              <button 
+                onClick={() => handleRejectConfirm("not_attractive")}
+                className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-xl text-sm font-medium text-left flex justify-between group"
+              >
+                <span>💸 No es una oferta atractiva</span>
+                <span className="opacity-0 group-hover:opacity-100">➜</span>
+              </button>
+              
+              <button 
+                onClick={() => handleRejectConfirm("dont_understand")}
+                className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-xl text-sm font-medium text-left flex justify-between group"
+              >
+                <span>🤔 No entiendo la oferta</span>
+                <span className="opacity-0 group-hover:opacity-100">➜</span>
+              </button>
+              
+              <button 
+                onClick={() => handleRejectConfirm("not_interested")}
+                className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 px-4 rounded-xl text-sm font-medium text-left flex justify-between group"
+              >
+                <span>👋 Simplemente no me interesa</span>
+                <span className="opacity-0 group-hover:opacity-100">➜</span>
+              </button>
+            </div>
+
+            <button 
+              onClick={() => setRejectModalOpen(null)}
+              className="mt-6 w-full text-center text-gray-500 text-xs hover:text-white underline"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/NearbyUsersCounter.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { point, distance } from "@turf/turf"; // 👈 CORRECCIÓN 1: Importación específica
+
+interface Props {
+  venueLat: number;
+  venueLng: number;
+}
+
+export default function NearbyUsersCounter({ venueLat, venueLng }: Props) {
+  const [nearbyCount, setNearbyCount] = useState(0);
+
+  useEffect(() => {
+    // Si no hay coordenadas del local, no hacemos nada
+    if (!venueLat || !venueLng) return;
+
+    // Escuchamos TODAS las ubicaciones de usuarios en tiempo real
+    const unsubscribe = onSnapshot(collection(db, "user_locations"), (snapshot) => {
+      let count = 0;
+      
+      try {
+        const venuePoint = point([venueLng, venueLat]);
+
+        snapshot.forEach((doc) => {
+          const data = doc.data(); // 👈 CORRECCIÓN 2: Obtenemos los datos limpios
+
+          // Verificamos que existan las coordenadas antes de usar Turf
+          if (data?.location?.latitude && data?.location?.longitude) {
+            
+            const userPoint = point([data.location.longitude, data.location.latitude]);
+            
+            // Calculamos distancia en metros
+            const dist = distance(venuePoint, userPoint, { units: 'meters' });
+
+            // 🎯 CONDICIÓN: Si está a menos de 25 metros
+            if (dist <= 25) {
+              count++;
+            }
+          }
+        });
+
+        setNearbyCount(count);
+      } catch (error) {
+        console.error("Error calculando distancias:", error);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [venueLat, venueLng]);
+
+  return (
+    <div className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden group">
+      
+      {/* Fondo con pulso si hay gente */}
+      {nearbyCount > 0 && (
+         <div className="absolute -top-10 -right-10 w-32 h-32 bg-green-500/20 rounded-full blur-3xl animate-pulse"></div>
+      )}
+
+      <div className="relative z-10">
+        <div className="flex justify-between items-center mb-4">
+           <h3 className="text-gray-400 text-xs font-bold uppercase tracking-widest">Radar de Proximidad (25m)</h3>
+           <div className={`w-3 h-3 rounded-full ${nearbyCount > 0 ? 'bg-green-500 shadow-[0_0_10px_lime]' : 'bg-gray-700'}`}></div>
+        </div>
+
+        <div className="flex items-baseline gap-2">
+          <span className="text-6xl font-black text-white tracking-tighter">
+            {nearbyCount}
+          </span>
+          <span className="text-sm font-medium text-gray-500">
+            personas detectadas
+          </span>
+        </div>
+
+        <p className="text-xs text-gray-600 mt-4 leading-relaxed">
+          Usuarios activos con la app abierta dentro de tu perímetro geofence.
+        </p>
+
+        {/* RECOMENDACIÓN INTELIGENTE */}
+        <div className={`mt-6 p-3 rounded-xl text-xs font-bold text-center transition-all ${
+           nearbyCount > 5 
+             ? 'bg-green-600 text-white animate-pulse cursor-pointer shadow-lg shadow-green-900/50'
+             : 'bg-gray-800 text-gray-500'
+        }`}>
+           {nearbyCount > 5 ? "🚀 ¡MOMENTO PERFECTO PARA UNA FLASH!" : "Esperando más tráfico..."}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/UserTracker.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { db } from "@/lib/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+
+// Configuración
+const UPDATE_INTERVAL_MS = 60000; // Actualizar cada 60 segundos (ahorra batería y lecturas)
+
+export default function UserTracker() {
+  const [status, setStatus] = useState<string>("💤 Inactivo");
+
+  useEffect(() => {
+    // 1. Obtener o Crear un ID de Dispositivo Anónimo
+    // Esto nos permite saber que "el usuario X" se ha movido, sin saber quién es (Privacidad)
+    let deviceId = localStorage.getItem("nitvibes_device_id");
+    if (!deviceId) {
+      deviceId = "user_" + Math.random().toString(36).substr(2, 9);
+      localStorage.setItem("nitvibes_device_id", deviceId);
+    }
+
+    const updateLocation = async () => {
+      if (!navigator.geolocation) {
+        setStatus("❌ GPS no soportado");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude, accuracy } = position.coords;
+
+            // 2. Escribir en Firebase ("Fichar")
+            // Usamos setDoc con merge para actualizar el MISMO documento del usuario
+            // Así no llenamos la DB de millones de filas, solo movemos su "punto"
+            await setDoc(doc(db, "user_locations", deviceId!), {
+              location: {
+                latitude,
+                longitude,
+              },
+              accuracy,
+              lastUpdated: serverTimestamp(), // Marca de tiempo del servidor
+              isOnline: true, // Bandera para saber que está activo
+            }, { merge: true });
+
+            setStatus(`📡 Señal emitida: ${new Date().toLocaleTimeString()}`);
+            console.log("📍 Ubicación enviada a Firebase:", latitude, longitude);
+          } catch (error) {
+            console.error("Error enviando ubicación:", error);
+            setStatus("❌ Error de conexión");
+          }
+        },
+        (error) => {
+          console.warn("No se pudo obtener ubicación:", error.message);
+          setStatus("⚠️ GPS desactivado o denegado");
+        },
+        { enableHighAccuracy: true } // Queremos precisión para saber si está DENTRO del local
+      );
+    };
+
+    // 3. Activar el latido
+    // Primera ejecución inmediata
+    updateLocation();
+    
+    // Ejecución periódica (cada minuto)
+    const intervalId = setInterval(updateLocation, UPDATE_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Este componente es invisible en la UI final, pero útil para depurar ahora
+  // Puedes poner "return null;" si quieres que sea totalmente invisible
+  return (
+    <div className="fixed bottom-0 left-0 bg-black/80 text-[10px] text-green-400 p-1 px-2 z-[9999] font-mono border-t border-green-900 pointer-events-none opacity-50">
+      {status}
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/SessionGuard.tsx ---
+
+"use client";
+
+import { useEffect } from "react";
+import { auth, db } from "@/lib/firebase";
+import { doc, updateDoc } from "firebase/firestore";
+
+export default function SessionGuard() {
+  useEffect(() => {
+    // Esta función se ejecuta solo cuando el usuario cierra la pestaña o el navegador
+    const handleUnload = () => {
+      const user = auth.currentUser;
+      if (user) {
+        // 1. Intentamos actualizar el estado en la DB (Best Effort)
+        // Usamos sendBeacon si es posible porque es más fiable al cerrar
+        const url = `/api/logout?uid=${user.uid}`; // Endpoint ficticio para forzar envío
+        navigator.sendBeacon(url);
+
+        // 2. Limpieza local inmediata
+        // Nota: No podemos esperar a promesas (await) al cerrar, debe ser síncrono o beacon
+        sessionStorage.clear();
+        localStorage.removeItem("nitvibes_admin_session");
+      }
+    };
+
+    // Eliminamos 'beforeunload' para evitar el pop-up gris de "Cambios no guardados"
+    window.addEventListener("unload", handleUnload);
+
+    return () => {
+      window.removeEventListener("unload", handleUnload);
+    };
+  }, []);
+
+  return null;
+}
+
+--- ARCHIVO: ./components/MapboxMap.tsx ---
+
+"use client";
+
+import { useEffect, useRef, useState } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { db, auth } from "@/lib/firebase";
+import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, onSnapshot, Unsubscribe } from "firebase/firestore";
+import VenueCard, { Venue } from './VenueCard';
+import { useRouter } from 'next/navigation';
+import { FeatureCollection } from 'geojson';
+
+// Token de Mapbox
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+if (!MAPBOX_TOKEN) console.error("⚠️ Falta token Mapbox");
+mapboxgl.accessToken = MAPBOX_TOKEN || "";
+
+export default function MapboxMap() {
+  const router = useRouter();
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({}); 
+  const watchIdRef = useRef<number | null>(null);
+  const heatmapUnsubRef = useRef<Unsubscribe | null>(null); // 🆕 Referencia para cancelar suscripción al heatmap
+
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  
+  // ESTADOS DE CONTROL
+  const [showIntroModal, setShowIntroModal] = useState(true);
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [gpsError, setGpsError] = useState("");
+
+  // CONFIGURACIÓN
+  const REFRESH_RATE = 10000; 
+
+  // 1. INICIALIZAR MAPA
+  useEffect(() => {
+    if (map.current) return;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current!,
+      style: 'mapbox://styles/mapbox/dark-v11', // Estilo oscuro ideal para la noche
+      center: [2.1734, 41.3851], // Barcelona centro
+      zoom: 12,
+      pitch: 45,
+    });
+
+    // 🆕 CUANDO EL MAPA CARGA, PREPARAMOS LA CAPA DE CALOR
+    map.current.on('load', () => {
+      setupHeatmapLayer();
+    });
+
+    // Cargar locales iniciales
+    fetchVenues();
+  }, []);
+
+  // 2. REFRESCO DE DATOS DE LOCALES (Cada 10s)
+  useEffect(() => {
+    const interval = setInterval(fetchVenues, REFRESH_RATE);
+    return () => clearInterval(interval);
+  }, [isSharing]);
+
+  // 3. 🆕 ACTIVAR HEATMAP (Escuchar usuarios en tiempo real)
+  useEffect(() => {
+    if (!map.current) return;
+
+    // Nos suscribimos a la colección de ubicaciones de usuarios
+    const locationsRef = collection(db, "user_locations");
+    heatmapUnsubRef.current = onSnapshot(locationsRef, (snapshot) => {
+      
+      // Convertimos los datos de Firestore a formato GeoJSON para Mapbox
+      const features = snapshot.docs
+        .map(doc => doc.data().location)
+        .filter(loc => loc && loc.longitude && loc.latitude)
+        .map(loc => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [loc.longitude, loc.latitude]
+          }
+        }));
+
+      const geoJsonData: FeatureCollection = {
+        type: 'FeatureCollection',
+        features: features as any
+      };
+
+      // Si el mapa ya cargó la fuente de datos, actualizamos los datos
+      const source = map.current?.getSource('user-heatmap-source') as mapboxgl.GeoJSONSource;
+      if (source) {
+        source.setData(geoJsonData);
+      }
+    });
+
+    return () => {
+      // Limpieza: dejar de escuchar si se desmonta el componente
+      if (heatmapUnsubRef.current) heatmapUnsubRef.current();
+    };
+  }, []); // Se ejecuta una vez al montar
+
+  // 4. LIMPIEZA GENERAL AL DESMONTAR
+  useEffect(() => {
+    return () => {
+      stopTrackingLocally();
+      if (heatmapUnsubRef.current) heatmapUnsubRef.current();
+    };
+  }, []);
+
+  // --- 🆕 CONFIGURACIÓN VISUAL DEL MAPA DE CALOR ---
+  const setupHeatmapLayer = () => {
+    if (!map.current) return;
+
+    // 1. Añadir una fuente de datos vacía (se llenará con Firebase)
+    map.current.addSource('user-heatmap-source', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
+    });
+
+    // 2. Añadir la capa visual de calor
+    map.current.addLayer({
+      id: 'user-heatmap-layer',
+      type: 'heatmap',
+      source: 'user-heatmap-source',
+      maxzoom: 15,
+      paint: {
+        // Intensidad basada en zoom (más zoom = manchas más suaves)
+        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 0, 1, 15, 3],
+        // Colores "Night Vibe": Transparente -> Morado -> Rosa -> Naranja/Rojo
+        'heatmap-color': [
+          'interpolate',
+          ['linear'],
+          ['heatmap-density'],
+          0, 'rgba(0,0,0,0)',       // Transparente (sin gente)
+          0.2, 'rgba(139, 92, 246, 0.5)', // Morado suave
+          0.6, 'rgba(236, 72, 153, 0.7)', // Rosa vibrante
+          1, 'rgba(249, 115, 22, 0.9)'    // Naranja/Rojo intenso (mucha gente)
+        ],
+        // Radio de influencia de cada punto
+        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 0, 2, 15, 25],
+        // Opacidad global de la capa
+        'heatmap-opacity': 0.8
+      }
+    // Lo ponemos "debajo" de los marcadores de los locales para que no los tapen
+    }, map.current.getLayer('poi-label') ? 'poi-label' : undefined); 
+  };
+
+
+  // --- LÓGICA DE DATOS DE LOCALES ---
+
+  const fetchVenues = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "venues"));
+      const venuesData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Venue[];
+      
+      setVenues(venuesData);
+      updateMarkers(venuesData); 
+    } catch (error) {
+      console.error("Error venues:", error);
+    }
+  };
+
+  const updateMarkers = (currentVenues: Venue[]) => {
+    if (!map.current) return;
+
+    currentVenues.forEach(venue => {
+      let color = '#6B7280'; // Gris base
+      
+      if (isSharing) {
+         if (venue.isOpen) {
+            color = '#10B981'; // Verde
+            if (venue.occupancy === 'medium') color = '#FBBF24';
+            if (venue.occupancy === 'high') color = '#EF4444';
+         }
+      } else {
+         if (venue.isOpen) color = '#059669'; 
+      }
+
+      if (venue.hasFlashPromo) color = '#A855F7';
+
+      if (markersRef.current[venue.id]) {
+        const marker = markersRef.current[venue.id];
+        const el = marker.getElement();
+        const svg = el.querySelector('path');
+        if (svg) svg.style.fill = color;
+        el.style.animation = venue.hasFlashPromo ? 'bounce 1s infinite' : 'none';
+      } else {
+        const marker = new mapboxgl.Marker({ color: color })
+          .setLngLat([venue.location.longitude, venue.location.latitude])
+          .addTo(map.current!);
+
+        marker.getElement().addEventListener('click', (e) => {
+          e.stopPropagation(); 
+          setSelectedVenue(venue);
+          map.current?.flyTo({ center: [venue.location.longitude, venue.location.latitude], zoom: 16 });
+        });
+
+        markersRef.current[venue.id] = marker;
+      }
+    });
+  };
+
+  // --- LÓGICA DE TRACKING Y GPS (TU PUNTO AZUL) ---
+
+  const handleShareLocation = () => {
+    if (!navigator.geolocation) {
+      setGpsError("Tu dispositivo no soporta geolocalización.");
+      return;
+    }
+
+    setShowIntroModal(false);
+    setIsSharing(true);
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        if (!userMarkerRef.current && map.current) {
+           map.current.flyTo({ center: [longitude, latitude], zoom: 15 });
+        }
+
+        if (map.current) {
+          if (!userMarkerRef.current) {
+            const el = document.createElement('div');
+            el.className = 'user-marker';
+            el.style.width = '15px';
+            el.style.height = '15px';
+            el.style.backgroundColor = '#3B82F6';
+            el.style.borderRadius = '50%';
+            el.style.border = '2px solid white';
+            el.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.5)';
+            
+            userMarkerRef.current = new mapboxgl.Marker(el)
+              .setLngLat([longitude, latitude])
+              .addTo(map.current);
+          } else {
+            userMarkerRef.current.setLngLat([longitude, latitude]);
+          }
+        }
+
+        updateFirebaseLocation(latitude, longitude);
+      },
+      (error) => {
+        console.error("Error GPS:", error);
+        setGpsError("No se pudo obtener la ubicación. Revisa los permisos.");
+        setIsSharing(false);
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  };
+
+  const handleDeclineLocation = () => {
+    setShowIntroModal(false);
+    setIsSharing(false);
+  };
+
+  const updateFirebaseLocation = async (lat: number, lng: number) => {
+    const userId = auth.currentUser?.uid || localStorage.getItem('nitvibes_anon_id') || 'anon_' + Math.random().toString(36).substr(2, 9);
+    if (!auth.currentUser) localStorage.setItem('nitvibes_anon_id', userId);
+
+    try {
+      await setDoc(doc(db, "user_locations", userId), {
+        location: { latitude: lat, longitude: lng },
+        timestamp: serverTimestamp(),
+        lastActive: new Date().toISOString()
+      });
+    } catch (e) { console.error("Error updating location db:", e); }
+  };
+
+  const stopTrackingLocally = async () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+    }
+
+    const userId = auth.currentUser?.uid || localStorage.getItem('nitvibes_anon_id');
+    if (userId) {
+      try {
+        await deleteDoc(doc(db, "user_locations", userId));
+      } catch (e) { console.error("Error delete loc:", e); }
+    }
+
+    setIsSharing(false);
+  };
+
+  // --- MODALES Y BOTONES ---
+
+  const handleExitRequest = () => {
+    setShowExitModal(true);
+  };
+
+  const confirmExit = (keepSharing: boolean) => {
+    if (!keepSharing) {
+       stopTrackingLocally();
+    }
+    router.push('/');
+  };
+
+  return (
+    <div className="relative w-full h-full font-sans">
+      <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
+      
+      {!showIntroModal && !showExitModal && (
+        <button 
+           onClick={handleExitRequest}
+           className="absolute top-4 left-4 z-10 bg-black/80 text-white px-4 py-2 rounded-full text-xs font-bold border border-white/20 backdrop-blur-md shadow-lg"
+        >
+           {isSharing ? "🔴 DETENER TRACKING" : "🚪 SALIR"}
+        </button>
+      )}
+
+      {/* MODAL 1: BIENVENIDA / PERMISOS */}
+      {showIntroModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#111] border border-white/10 rounded-3xl p-8 max-w-sm text-center shadow-2xl">
+            <div className="text-4xl mb-4">📍</div>
+            <h2 className="text-xl font-bold text-white mb-2">Mejora tu experiencia</h2>
+            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+              Comparte tu localización para ver la ocupación en tiempo real y encontrar las mejores fiestas cerca de ti.
+            </p>
+            {gpsError && <p className="text-red-500 text-xs mb-4">{gpsError}</p>}
+            
+            <div className="space-y-3">
+              <button 
+                onClick={handleShareLocation}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+              >
+                COMPARTIR UBICACIÓN 🚀
+              </button>
+              <button 
+                onClick={handleDeclineLocation}
+                className="w-full bg-transparent border border-white/20 text-gray-400 font-bold py-3 rounded-xl hover:bg-white/5 transition-all"
+              >
+                Rechazar (Modo Limitado)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: CONFIRMACIÓN DE SALIDA */}
+      {showExitModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-6 bg-black/90 backdrop-blur-sm animate-in zoom-in-95">
+          <div className="bg-[#111] border border-red-900/30 rounded-3xl p-8 max-w-sm text-center shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent"></div>
+            <h2 className="text-lg font-bold text-white mb-2">¿Te marchas? 👋</h2>
+            <p className="text-gray-400 text-sm mb-6">
+              Puedes dejar de compartir tu ubicación ahora o mantenerla activa en segundo plano mientras navegas por la app.
+            </p>
+            <div className="space-y-3">
+              <button 
+                onClick={() => confirmExit(false)}
+                className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg"
+              >
+                DEJAR DE COMPARTIR Y SALIR
+              </button>
+              {isSharing && (
+                <button 
+                  onClick={() => confirmExit(true)}
+                  className="w-full bg-gray-800 border border-white/10 text-white font-bold py-3 rounded-xl hover:bg-gray-700 transition-all text-xs"
+                >
+                  SEGUIR COMPARTIENDO Y SALIR
+                </button>
+              )}
+              <button onClick={() => setShowExitModal(false)} className="text-gray-500 text-xs mt-2 hover:text-white underline">
+                Cancelar (Volver al mapa)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Venue Card */}
+      {selectedVenue && (
+        <VenueCard venue={selectedVenue} onClose={() => setSelectedVenue(null)} />
+      )}
+    </div>
+  );
+}
+
+--- ARCHIVO: ./components/Footer.tsx ---
+
+import Link from "next/link";
+
+export default function Footer() {
+  return (
+    // CAMBIOS: fixed, bottom-0, h-7 (altura fija), z-50 (capa alta)
+    <footer className="fixed bottom-0 left-0 w-full h-7 bg-black border-t border-gray-900 z-[60] flex items-center justify-between px-4">
+        
+        {/* DERECHA: Copyright en una línea */}
+        <div className="text-[8px] text-gray-600 flex gap-1">
+            <span>Dev by</span>
+            <a 
+              href="https://konnektwerk.com/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-500 hover:text-cyan-400 font-bold transition-colors"
+            >
+              Konnektwerk.All rights reserved.
+            </a>
+            <span>© 2026</span>
+        </div>
+
+    </footer>
+  );
+}
+
+--- ARCHIVO: ./components/LanguageSelector.tsx ---
+
+"use client";
+
+import { useLanguage } from "@/context/LanguageContext";
+import { Language } from "@/lib/translations";
+
+export default function LanguageSelector() {
+  const { language, setLanguage } = useLanguage();
+
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLanguage(e.target.value as Language);
+  };
+
+  return (
+    <div className="relative">
+      <select
+        value={language}
+        onChange={handleChange}
+        className="appearance-none bg-gray-900 border border-gray-700 text-white text-xs font-bold py-1.5 pl-3 pr-8 rounded-lg cursor-pointer focus:outline-none focus:border-purple-500 transition-colors uppercase"
+      >
+        <option value="es">🇪🇸 ES</option>
+        <option value="ca">🏴 CA</option>
+        <option value="en">🇬🇧 EN</option>
+        <option value="fr">🇫🇷 FR</option>
+        <option value="de">🇩🇪 DE</option>
+        <option value="it">🇮🇹 IT</option>
+        <option value="pt">🇵🇹 PT</option>
+      </select>
+      
+      {/* Flechita personalizada SVG */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+        <svg className="fill-current h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+          <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./sanity.config.ts ---
+
+import { defineConfig } from 'sanity';
+import { structureTool } from 'sanity/structure';
+import post from './sanity/schemas/post';
+
+export default defineConfig({
+  name: 'default',
+  title: 'Nitvibes Admin',
+
+  projectId: 'lrs1fzgx',
+  dataset: 'production',
+
+  basePath: '/studio',
+
+  plugins: [structureTool()],
+
+  schema: {
+    types: [post],
+  },
+
+  // --- AÑADE ESTO PARA FILTRAR LOS BOTONES ---
+  auth: {
+    // Esto le dice a Sanity: "Solo muéstrame el proveedor que NO sea google ni github"
+    providers: (providers) => 
+      providers.filter((provider) => provider.name === 'sanity'), 
+      // 'sanity' es el nombre interno del login con email/password
+  },
+});
+
+--- ARCHIVO: ./lib/firebase.ts ---
+
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth, GoogleAuthProvider } from "firebase/auth"; // 👈 Importante
+
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+// Singleton para evitar errores en Next.js
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+const db = getFirestore(app);
+const auth = getAuth(app); // ✅ Inicializamos Auth
+const googleProvider = new GoogleAuthProvider(); // ✅ Proveedor Google
+
+export { db, auth, googleProvider };
+
+--- ARCHIVO: ./lib/translations.ts ---
+
+export type Language = 'es' | 'en' | 'ca' | 'de' | 'fr' | 'pt' | 'it';
+
+export const translations = {
+  es: {
+    loading: "Cargando...",
+    welcome: "Bienvenido",
+    access_title: "NITVIBES ID",
+    access_subtitle: "Selecciona tu perfil",
+    profile_viber: "VIBERS",
+    desc_viber: "Disfruta de la noche",
+    profile_partner: "PARTNERS",
+    desc_partner: "Gestión de Venues",
+    profile_gov: "GOV",
+    desc_gov: "Entidades Públicas",
+    profile_team: "TEAM",
+    desc_team: "Admin & Staff",
+    login: "Entrar",
+    logout: "Salir",
+    map_open: "ABIERTO",
+    map_closed: "CERRADO",
+    map_full: "A TOPE 🔥",
+    map_medium: "ANIMADO 🟡",
+    map_free: "TRANQUILO 🟢",
+    // 🆕 PORTADA
+    hero_title: "Descubre el pulso nocturno de Barcelona.",
+    hero_subtitle: "Sin filtros. En vivo.",
+    btn_map: "MAPA",
+    btn_vibes: "VIBES"
+  },
+  en: {
+    loading: "Loading...",
+    welcome: "Welcome",
+    access_title: "NITVIBES ID",
+    access_subtitle: "Select profile",
+    profile_viber: "VIBERS",
+    desc_viber: "Enjoy the night",
+    profile_partner: "PARTNERS",
+    desc_partner: "Venue Management",
+    profile_gov: "GOV",
+    desc_gov: "Public Entities",
+    profile_team: "TEAM",
+    desc_team: "Admin & Staff",
+    login: "Login",
+    logout: "Logout",
+    map_open: "OPEN",
+    map_closed: "CLOSED",
+    map_full: "FULL 🔥",
+    map_medium: "LIVELY 🟡",
+    map_free: "QUIET 🟢",
+    // 🆕 PORTADA
+    hero_title: "Discover the night pulse of Barcelona.",
+    hero_subtitle: "No filters. Live.",
+    btn_map: "MAP",
+    btn_vibes: "VIBES"
+  },
+  ca: {
+    loading: "Carregant...",
+    welcome: "Benvingut",
+    access_title: "NITVIBES ID",
+    access_subtitle: "Tria el teu perfil",
+    profile_viber: "VIBERS",
+    desc_viber: "Gaudeix de la nit",
+    profile_partner: "PARTNERS",
+    desc_partner: "Gestió de Locals",
+    profile_gov: "GOV",
+    desc_gov: "Entitats Públiques",
+    profile_team: "EQUIP",
+    desc_team: "Admin i Staff",
+    login: "Entrar",
+    logout: "Sortir",
+    map_open: "OBERT",
+    map_closed: "TANCAT",
+    map_full: "A PETA 🔥",
+    map_medium: "ANIMAT 🟡",
+    map_free: "TRANQUIL 🟢",
+    // 🆕 PORTADA
+    hero_title: "Descobreix el pols nocturn de Barcelona.",
+    hero_subtitle: "Sense filtres. En viu.",
+    btn_map: "MAPA",
+    btn_vibes: "VIBES"
+  },
+  de: {
+    loading: "Laden...",
+    welcome: "Willkommen",
+    access_title: "NITVIBES ID",
+    access_subtitle: "Profil wählen",
+    profile_viber: "VIBERS",
+    desc_viber: "Genieße die Nacht",
+    profile_partner: "PARTNER",
+    desc_partner: "Verwaltung",
+    profile_gov: "GOV",
+    desc_gov: "Behörden",
+    profile_team: "TEAM",
+    desc_team: "Admin & Personal",
+    login: "Anmelden",
+    logout: "Abmelden",
+    map_open: "GEÖFFNET",
+    map_closed: "GESCHLOSSEN",
+    map_full: "VOLL 🔥",
+    map_medium: "BELEBT 🟡",
+    map_free: "RUHIG 🟢",
+    // 🆕 PORTADA
+    hero_title: "Entdecke den nächtlichen Puls von Barcelona.",
+    hero_subtitle: "Ohne Filter. Live.",
+    btn_map: "KARTE",
+    btn_vibes: "VIBES"
+  },
+  fr: {
+    loading: "Chargement...",
+    welcome: "Bienvenue",
+    access_title: "NITVIBES ID",
+    access_subtitle: "Choisir un profil",
+    profile_viber: "VIBERS",
+    desc_viber: "Profitez de la nuit",
+    profile_partner: "PARTNERS",
+    desc_partner: "Gestion des lieux",
+    profile_gov: "GOV",
+    desc_gov: "Entités publiques",
+    profile_team: "ÉQUIPE",
+    desc_team: "Admin et Staff",
+    login: "Connexion",
+    logout: "Déconnexion",
+    map_open: "OUVERT",
+    map_closed: "FERMÉ",
+    map_full: "COMPLET 🔥",
+    map_medium: "ANIMÉ 🟡",
+    map_free: "CALME 🟢",
+    // 🆕 PORTADA
+    hero_title: "Découvrez le pouls nocturne de Barcelone.",
+    hero_subtitle: "Sans filtres. En direct.",
+    btn_map: "CARTE",
+    btn_vibes: "VIBES"
+  },
+  pt: {
+    loading: "Carregando...",
+    welcome: "Bem-vindo",
+    access_title: "NITVIBES ID",
+    access_subtitle: "Selecione o perfil",
+    profile_viber: "VIBERS",
+    desc_viber: "Aproveite a noite",
+    profile_partner: "PARCEIROS",
+    desc_partner: "Gestão de Locais",
+    profile_gov: "GOV",
+    desc_gov: "Entidades Públicas",
+    profile_team: "EQUIPE",
+    desc_team: "Admin e Staff",
+    login: "Entrar",
+    logout: "Sair",
+    map_open: "ABERTO",
+    map_closed: "FECHADO",
+    map_full: "LOTADO 🔥",
+    map_medium: "ANIMADO 🟡",
+    map_free: "TRANQUILO 🟢",
+    // 🆕 PORTADA
+    hero_title: "Descubra o pulso noturno de Barcelona.",
+    hero_subtitle: "Sem filtros. Ao vivo.",
+    btn_map: "MAPA",
+    btn_vibes: "VIBES"
+  },
+  it: {
+    loading: "Caricamento...",
+    welcome: "Benvenuto",
+    access_title: "NITVIBES ID",
+    access_subtitle: "Scegli profilo",
+    profile_viber: "VIBERS",
+    desc_viber: "Goditi la notte",
+    profile_partner: "PARTNER",
+    desc_partner: "Gestione Locali",
+    profile_gov: "GOV",
+    desc_gov: "Enti Pubblici",
+    profile_team: "TEAM",
+    desc_team: "Admin & Staff",
+    login: "Accedi",
+    logout: "Esci",
+    map_open: "APERTO",
+    map_closed: "CHIUSO",
+    map_full: "PIENO 🔥",
+    map_medium: "ANIMATO 🟡",
+    map_free: "TRANQUILLO 🟢",
+    // 🆕 PORTADA
+    hero_title: "Scopri il ritmo notturno di Barcellona.",
+    hero_subtitle: "Senza filtri. Dal vivo.",
+    btn_map: "MAPPA",
+    btn_vibes: "VIBES"
+  }
+};
+
+--- ARCHIVO: ./tailwind.config.ts ---
+
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: [
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-conic":
+          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+      },
+    },
+  },
+  plugins: [],
+};
+export default config;
+
+--- ARCHIVO: ./sanity/schemas/post.ts ---
+
+export default {
+  name: 'post',
+  title: 'Noticias (Crónicas)',
+  type: 'document',
+  fields: [
+    {
+      name: 'title',
+      title: 'Título de la Noticia',
+      type: 'string',
+    },
+    {
+      name: 'slug',
+      title: 'Slug (URL amigable)',
+      type: 'slug',
+      options: {
+        source: 'title',
+        maxLength: 96,
+      },
+    },
+    {
+      name: 'publishedAt',
+      title: 'Fecha de Publicación',
+      type: 'datetime',
+    },
+    {
+      name: 'mainImage',
+      title: 'Imagen de Portada',
+      type: 'image',
+      options: {
+        hotspot: true, // Permite recortar la foto
+      },
+    },
+    {
+      name: 'excerpt',
+      title: 'Resumen Corto (Entradilla)',
+      type: 'text',
+      rows: 3
+    },
+    {
+      name: 'body',
+      title: 'Cuerpo de la Noticia',
+      type: 'array', // Esto crea un editor de texto rico
+      of: [{type: 'block'}],
+    },
+    {
+        name: 'categories',
+        title: 'Categorías',
+        type: 'array',
+        of: [{type: 'string'}] // Simplificado para ir rápido
+    }
+  ],
+}
+
+--- ARCHIVO: ./sanity/client.ts ---
+
+import { createClient } from "next-sanity";
+
+export const client = createClient({
+  projectId: "lrs1fzgx", // <--- AQUÍ PEGARÁS TU CÓDIGO EN EL PASO 2
+  dataset: "production",
+  apiVersion: "2024-01-01",
+  useCdn: false, // false = datos frescos al instante
+});
+
+--- ARCHIVO: ./app/access/page.tsx ---
+
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+export default function AccessSelector() {
+  const router = useRouter();
+
+  const profiles = [
+    {
+      id: "viber",
+      title: "VIBERS",
+      desc: "Disfruta de la noche",
+      icon: "🎉",
+      color: "from-blue-500 to-purple-600",
+      link: "/login" // Nueva ruta para usuarios
+    },
+    {
+      id: "partner",
+      title: "PARTNERS",
+      desc: "Gestión de Venues",
+      icon: "🏢",
+      color: "from-purple-600 to-pink-600",
+      link: "/business"
+    },
+    {
+      id: "gov",
+      title: "GOV",
+      desc: "Entidades Públicas",
+      icon: "⚖️",
+      color: "from-emerald-500 to-teal-600",
+      link: "/gov" // Nueva ruta GOV
+    },
+    {
+      id: "team",
+      title: "TEAM",
+      desc: "Admin & Staff",
+      icon: "🛡️",
+      color: "from-gray-700 to-gray-900",
+      link: "/admin"
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col p-6 pb-24">
+      
+      <div className="mt-8 mb-8">
+        <h1 className="text-3xl font-black italic tracking-tighter">NITVIBES <span className="text-purple-500">ID</span></h1>
+        <p className="text-gray-400 text-sm mt-2">Selecciona tu perfil de acceso</p>
+      </div>
+
+      <div className="flex-1 grid gap-4 content-center">
+        {profiles.map((profile, index) => (
+          <Link 
+            key={profile.id} 
+            href={profile.link}
+            className="group relative overflow-hidden rounded-2xl p-0.5 transition-all active:scale-[0.98]"
+          >
+            {/* Borde Gradiente */}
+            <div className={`absolute inset-0 bg-gradient-to-r ${profile.color} opacity-50 group-hover:opacity-100 transition-opacity`}></div>
+            
+            {/* Contenido Tarjeta */}
+            <div className="relative bg-gray-900 rounded-xl p-5 flex items-center justify-between h-full">
+              <div className="flex items-center gap-4">
+                <div className="text-3xl bg-black/30 w-12 h-12 flex items-center justify-center rounded-lg">
+                  {profile.icon}
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg tracking-wide">{profile.title}</h3>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">{profile.desc}</p>
+                </div>
+              </div>
+              <div className="text-gray-500 group-hover:text-white transition-colors">
+                ➜
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      <div className="text-center text-xs text-gray-600 mt-8">
+        v1.2.0 • Secure Access Gateway
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/layout.tsx ---
+
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+
+// Contextos y Componentes existentes
+import { LanguageProvider } from "@/context/LanguageContext";
+import LanguageSelector from "@/components/LanguageSelector";
+import BottomNav from "@/components/BottomNav"; // Asegúrate de haber actualizado el código de este archivo
+import Footer from "@/components/Footer";
+import WifiProximityAlert from "@/components/WifiProximityAlert"; 
+
+// 👇 1. IMPORTAR EL NUEVO GUARDIÁN
+import SessionGuard from "@/components/SessionGuard";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "NITVIBES",
+  description: "Descubre el pulso nocturno de Barcelona.",
+  manifest: "/manifest.json",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="es">
+      <body className={`${inter.className} bg-black text-white`}>
+        <LanguageProvider>
+          
+          {/* 👇 2. EL GUARDIÁN INVISIBLE (Maneja el cierre de sesión y ubicación) */}
+          <SessionGuard />
+          
+          {/* Alerta de Wifi (Invisible hasta detectar venue) */}
+          <WifiProximityAlert />
+
+          {/* Selector Flotante (Arriba Derecha) */}
+          <div className="fixed top-4 right-4 z-[9999]">
+             <LanguageSelector />
+          </div>
+
+          {/* El contenido de la página */}
+          <div className="min-h-screen">
+             {children}
+          </div>
+
+          {/* Footer (Pie de página) */}
+          <Footer />
+
+          {/* Menú de Navegación (Abajo - Fixed) */}
+          {/* Este componente ya usa la lógica nueva de Perfil vs Panel */}
+          <BottomNav />
+          
+        </LanguageProvider>
+      </body>
+    </html>
+  );
+}
+
+--- ARCHIVO: ./app/perfil/page.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { auth, db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
+
+export default function ProfileSelectionPage() {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    // 1. Timeout de seguridad: Si en 4 seg no redirige, muestra el menú
+    const safetyTimer = setTimeout(() => {
+      setChecking(false);
+    }, 4000);
+
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      // Si no hay usuario o es anónimo, paramos chequeo y mostramos menú
+      if (!user || user.isAnonymous) {
+        setChecking(false);
+        clearTimeout(safetyTimer);
+        return;
+      }
+
+      try {
+        // A) Admin Check
+        if (localStorage.getItem("nitvibes_admin_session") === "true") {
+           router.replace("/admin/dashboard");
+           return;
+        }
+
+        // B) Partner Check
+        const qVenue = query(collection(db, "venues"), where("ownerId", "==", user.uid));
+        const venueSnap = await getDocs(qVenue);
+        if (!venueSnap.empty) {
+          router.replace("/business");
+          return;
+        }
+        
+        // C) Usuario Free
+        // Si no es ninguno de los anteriores, lo mandamos al inicio (o su dashboard user si existiera)
+        router.replace("/");
+        
+      } catch (e) {
+        console.error("Error routing user", e);
+        setChecking(false); // Ante error, mostrar menú
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      clearTimeout(safetyTimer);
+    };
+  }, [router]);
+
+  // Pantalla de carga (Spinner)
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-purple-500"></div>
+        <p className="text-xs text-purple-500 animate-pulse font-bold">ACCEDIENDO AL PANEL...</p>
+      </div>
+    );
+  }
+
+  // MENÚ DE SELECCIÓN (Solo visible si no redirigió)
+  return (
+    <div className="min-h-screen bg-black text-white p-6 pb-32 font-sans flex flex-col justify-center max-w-md mx-auto">
+      
+      <div className="mb-8 mt-4">
+        <h1 className="text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-2">
+          NITVIBES <span className="text-white not-italic">ID</span>
+        </h1>
+        <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">
+          Selecciona tu perfil de acceso
+        </p>
+      </div>
+
+      <div className="space-y-3 flex-1 flex flex-col justify-center pb-10">
+        
+        <button onClick={() => router.push("/login")} className="group w-full bg-[#111] border border-gray-800 hover:border-purple-500 rounded-3xl p-5 text-left transition-all hover:bg-gray-900 active:scale-95">
+          <div className="flex items-center gap-4">
+            <div className="text-2xl bg-purple-500/10 p-3 rounded-2xl">🎉</div>
+            <div>
+              <h3 className="font-black text-lg text-white group-hover:text-purple-400 transition-colors">VIBERS</h3>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Disfruta de la noche</p>
+            </div>
+          </div>
+        </button>
+
+        <button onClick={() => router.push("/business/login")} className="group w-full bg-[#111] border border-gray-800 hover:border-blue-500 rounded-3xl p-5 text-left transition-all hover:bg-gray-900 active:scale-95">
+          <div className="flex items-center gap-4">
+            <div className="text-2xl bg-blue-500/10 p-3 rounded-2xl">🏢</div>
+            <div>
+              <h3 className="font-black text-lg text-white group-hover:text-blue-400 transition-colors">PARTNERS</h3>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Gestión de Venues</p>
+            </div>
+          </div>
+        </button>
+
+        <button onClick={() => router.push("/gov/login")} className="group w-full bg-[#111] border border-gray-800 hover:border-yellow-500 rounded-3xl p-5 text-left transition-all hover:bg-gray-900 active:scale-95">
+          <div className="flex items-center gap-4">
+            <div className="text-2xl bg-yellow-500/10 p-3 rounded-2xl">⚖️</div>
+            <div>
+              <h3 className="font-black text-lg text-white group-hover:text-yellow-400 transition-colors">GOV</h3>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Entidades Públicas</p>
+            </div>
+          </div>
+        </button>
+
+        <button onClick={() => router.push("/admin/login")} className="group w-full bg-[#111] border border-gray-800 hover:border-green-500 rounded-3xl p-5 text-left transition-all hover:bg-gray-900 active:scale-95">
+          <div className="flex items-center gap-4">
+            <div className="text-2xl bg-green-500/10 p-3 rounded-2xl">🛡️</div>
+            <div>
+              <h3 className="font-black text-lg text-white group-hover:text-green-400 transition-colors">TEAM</h3>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Admin & Staff</p>
+            </div>
+          </div>
+        </button>
+
+        <Link href="/register" className="block w-full bg-gradient-to-r from-gray-900 to-black border border-gray-700 hover:border-white rounded-3xl p-5 text-center transition-all hover:scale-[1.02] mt-4 shadow-lg">
+          <span className="text-sm font-bold text-gray-300">¿No tienes cuenta?</span>
+          <br/>
+          <span className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-pink-500">
+            REGÍSTRATE GRATIS AQUÍ
+          </span>
+        </Link>
+
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/actions/admin-auth.ts ---
+
+"use server";
+
+export async function validateAdminCredentials(email: string, pass: string) {
+  // 1. Credenciales de SUPER ADMIN (El Jefe)
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPass = process.env.ADMIN_PASSWORD;
+
+  // 2. Credenciales de COLABORADOR (El Staff)
+  const collabEmail = process.env.COLLAB_EMAIL;
+  const collabPass = process.env.COLLAB_PASSWORD;
+
+  // Validar si es ADMIN
+  if (adminEmail && adminPass && email === adminEmail && pass === adminPass) {
+    return { success: true, role: 'admin' };
+  }
+
+  // Validar si es COLLAB
+  if (collabEmail && collabPass && email === collabEmail && pass === collabPass) {
+    return { success: true, role: 'collab' };
+  }
+
+  // Si no coincide con ninguno
+  return { success: false, error: "Credenciales inválidas." };
+}
+
+--- ARCHIVO: ./app/actions/business-auth.ts ---
+
+"use server";
+
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
+
+export async function loginVenue(email: string, pass: string) {
+  try {
+    const venuesRef = collection(db, "venues");
+    
+    // 👇 AQUÍ ESTÁ LA CLAVE: Usamos el nombre 'feo' que tiene la base de datos real
+    // Mirando tu captura, la columna se llama "b2BEmail" (con B mayúscula)
+    const q = query(venuesRef, where("b2BEmail", "==", email)); 
+    
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      console.log("❌ No se encontró ningún local con ese email.");
+      return { success: false, error: "Usuario no encontrado" };
+    }
+
+    const venueDoc = snapshot.docs[0];
+    const venueData = venueDoc.data();
+
+    // 👇 AQUÍ TAMBIÉN: Usamos "b2BPassword"
+    if (venueData.b2BPassword === pass) {
+      return { success: true, venueId: venueDoc.id, name: venueData.name };
+    } else {
+      return { success: false, error: "Contraseña incorrecta" };
+    }
+  } catch (error) {
+    console.error("Error login B2B:", error);
+    return { success: false, error: "Error del servidor" };
+  }
+}
+
+--- ARCHIVO: ./app/actions/auth.ts ---
+
+"use server";
+
+export async function verifyAdminCredentials(email: string, pass: string) {
+  // Leemos las claves secretas del entorno del servidor
+  const trueEmail = process.env.ADMIN_EMAIL;
+  const truePass = process.env.ADMIN_PASSWORD;
+
+  // Comprobación estricta
+  if (email === trueEmail && pass === truePass) {
+    return { success: true };
+  } else {
+    return { success: false };
+  }
+}
+
+--- ARCHIVO: ./app/actions/gov-auth.ts ---
+
+"use server";
+
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
+
+export async function loginGov(email: string, pass: string) {
+  try {
+    const govRef = collection(db, "gov_users");
+    const q = query(govRef, where("email", "==", email));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      return { success: false, error: "Agente no autorizado" };
+    }
+
+    const docUser = snapshot.docs[0];
+    const userData = docUser.data();
+
+    // Verificación simple para MVP
+    if (userData.password === pass) {
+      return { success: true, id: docUser.id, dept: userData.department };
+    } else {
+      return { success: false, error: "Credenciales inválidas" };
+    }
+  } catch (error) {
+    console.error("Error GOV login:", error);
+    return { success: false, error: "Error del sistema" };
+  }
+}
+
+--- ARCHIVO: ./app/business/login/page.tsx ---
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+export default function PartnerLogin() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((user) => {
+      // 🛑 CORRECCIÓN: Solo redirigir si es usuario REAL. 
+      // Si es anónimo (mapa), ignoramos y dejamos que se loguee.
+      if (user && !user.isAnonymous) {
+        router.push("/business");
+      }
+    });
+    return () => unsub();
+  }, [router]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // Al loguearse con éxito, Firebase cambia el estado de auth,
+      // el useEffect de arriba se dispara y redirige automáticamente.
+    } catch (err: any) {
+      console.error(err);
+      setError("Credenciales incorrectas.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 font-sans">
+      
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+            NITVIBES <span className="text-white not-italic">PARTNER</span>
+        </h1>
+        <p className="text-xs text-gray-500 uppercase tracking-widest mt-2 font-bold">
+          Acceso Corporativo
+        </p>
+      </div>
+
+      <div className="w-full max-w-sm bg-[#111] border border-gray-800 rounded-3xl p-8 shadow-2xl relative">
+        <form onSubmit={handleLogin} className="space-y-5 relative z-10">
+          <div>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1 mb-1 block">Email Corporativo</label>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-black border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-purple-500 outline-none placeholder-gray-700" placeholder="admin@local.com" />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1 mb-1 block">Contraseña</label>
+            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+              className="w-full bg-black border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-purple-500 outline-none placeholder-gray-700" placeholder="••••••••" />
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              <span className="text-red-300 text-xs font-medium">{error}</span>
+            </div>
+          )}
+
+          <button type="submit" disabled={loading}
+            className="w-full bg-white text-black font-black py-4 rounded-xl hover:bg-gray-200 transition-all disabled:opacity-50 mt-4 shadow-lg">
+            {loading ? "VERIFICANDO..." : "ENTRAR AL PANEL"}
+          </button>
+        </form>
+
+        <div className="mt-8 text-center border-t border-gray-800 pt-6">
+          <Link href="/perfil" className="text-xs text-gray-500 hover:text-white transition-colors">
+            ← Volver
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/business/dashboard/[id]/page.tsx ---
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot, updateDoc, Timestamp, collection, addDoc, query, orderBy, limit, serverTimestamp } from "firebase/firestore";
+import Image from "next/image";
+
+export default function VenueDashboard() {
+  const { id } = useParams();
+  const router = useRouter();
+  const [venue, setVenue] = useState<any>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Estados Flash
+  const [formData, setFormData] = useState({ title: "", description: "", price: "", duration: 60 });
+  const [timeLeft, setTimeLeft] = useState<string>("");
+
+  // 🗓️ ESTADO DEL HORARIO SEMANAL
+  const DAYS_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const DAYS_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  
+  const [weeklySchedule, setWeeklySchedule] = useState<any>({});
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [activeDayTab, setActiveDayTab] = useState('friday'); // Empezamos mostrando el viernes (día fuerte)
+
+  useEffect(() => {
+    const storedId = localStorage.getItem("nitvibes_venue_id");
+    if (!storedId || storedId !== id) router.push("/business");
+  }, [id, router]);
+
+  useEffect(() => {
+    if (!id) return;
+    const unsubVenue = onSnapshot(doc(db, "venues", id as string), (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const data = docSnapshot.data();
+        setVenue({ id: docSnapshot.id, ...data });
+        if (data.hasFlashPromo) {
+          setFormData({ title: data.flashTitle || "", description: data.flashMessage || "", price: data.flashPrice || "", duration: 60 });
+        }
+        
+        // Cargar horario semanal (o inicializar vacío)
+        if (data.weeklySchedule) {
+          setWeeklySchedule(data.weeklySchedule);
+        } else {
+          // Estructura por defecto vacía
+          const defaultSchedule: any = {};
+          DAYS_KEYS.forEach(day => defaultSchedule[day] = { isOpen: false, open: "23:00", close: "06:00" });
+          setWeeklySchedule(defaultSchedule);
+        }
+      }
+      setLoading(false);
+    });
+
+    const historyRef = collection(db, "venues", id as string, "flash_history");
+    const q = query(historyRef, orderBy("launchedAt", "desc"), limit(10));
+    const unsubHistory = onSnapshot(q, (snap) => setHistory(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+
+    return () => { unsubVenue(); unsubHistory(); };
+  }, [id]);
+
+  useEffect(() => {
+    if (!venue?.hasFlashPromo || !venue?.flashEndTime) { setTimeLeft(""); return; }
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const end = venue.flashEndTime.toMillis ? venue.flashEndTime.toMillis() : venue.flashEndTime; 
+      const distance = end - now;
+      if (distance < 0) { clearInterval(interval); setTimeLeft("EXPIRADA"); } 
+      else {
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        setTimeLeft(`${minutes}m ${seconds}s`);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [venue]);
+
+  // GUARDAR HORARIO SEMANAL
+  const saveWeeklySchedule = async () => {
+    if (!venue) return;
+    setScheduleLoading(true);
+    try {
+      const venueRef = doc(db, "venues", venue.id);
+      await updateDoc(venueRef, { weeklySchedule: weeklySchedule });
+      alert("✅ Agenda semanal guardada correctamente");
+    } catch (e: any) {
+      alert("❌ Error: " + e.message);
+    }
+    setScheduleLoading(false);
+  };
+
+  // Actualizar un día específico en el estado local
+  const updateDay = (dayKey: string, field: string, value: any) => {
+    setWeeklySchedule((prev: any) => ({
+      ...prev,
+      [dayKey]: {
+        ...prev[dayKey],
+        [field]: value
+      }
+    }));
+  };
+
+  const toggleFlash = async () => { /* ... Lógica igual que antes ... */ 
+    if (!venue) return;
+    if (!venue.hasFlashPromo) {
+      if (!formData.title || !formData.description || !formData.price) { alert("⚠️ Completa todos los campos"); return; }
+      const now = new Date();
+      const endTimeJs = new Date(now.getTime() + formData.duration * 60000);
+      const endTimeFirestore = Timestamp.fromDate(endTimeJs);
+      try {
+        const venueRef = doc(db, "venues", venue.id);
+        await updateDoc(venueRef, { hasFlashPromo: true, flashTitle: formData.title, flashMessage: formData.description, flashPrice: formData.price, flashEndTime: endTimeFirestore });
+        await addDoc(collection(db, "venues", venue.id, "flash_history"), { title: formData.title, price: formData.price, duration: formData.duration, launchedAt: serverTimestamp(), status: "completed" });
+      } catch (e: any) { alert("❌ Error: " + e.message); }
+    } else {
+      try {
+        const venueRef = doc(db, "venues", venue.id);
+        await updateDoc(venueRef, { hasFlashPromo: false, flashEndTime: null });
+        setFormData({ ...formData, title: "", description: "", price: "" });
+      } catch (e: any) { alert("❌ Error: " + e.message); }
+    }
+  };
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return "-";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("es-ES", { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' });
+  };
+
+  if (loading || !venue) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin text-4xl">⚡</div></div>;
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-purple-500/30 pb-10">
+      <nav className="border-b border-white/10 bg-black/50 backdrop-blur-xl sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 h-20 flex justify-between items-center">
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-black tracking-tighter italic bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">NITVIBES</h1>
+            <span className="text-[10px] font-bold tracking-[0.2em] text-gray-500 uppercase">Partners Dashboard</span>
+          </div>
+          <div className="flex items-center gap-4 bg-white/5 px-4 py-2 rounded-full border border-white/5 hover:border-purple-500/30 transition-colors">
+            <span className="text-sm font-bold text-white hidden sm:block">{venue.name}</span>
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-800 ring-2 ring-purple-500/20">
+               <Image src={venue.image} alt="Logo" width={32} height={32} className="object-cover w-full h-full" unoptimized />
+            </div>
+            <button onClick={() => router.push("/business")} className="ml-2 text-gray-400 hover:text-white transition-colors">✖</button>
+          </div>
+        </div>
+      </nav>
+
+      <main className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+        
+        {/* IZQUIERDA: FLASH ACTION (Igual que antes) */}
+        <div className="lg:col-span-7 space-y-6">
+          <div className={`relative rounded-3xl p-1 overflow-hidden transition-all duration-500 ${venue.hasFlashPromo ? 'shadow-[0_0_100px_-20px_rgba(168,85,247,0.5)]' : 'shadow-none'}`}>
+             {/* ... (Código de Flash Action idéntico al anterior, lo omito para no saturar, MANTÉN EL TUYO) ... */}
+             <div className={`absolute inset-0 bg-gradient-to-br from-gray-800 to-black ${venue.hasFlashPromo ? 'from-purple-600 to-pink-600 animate-pulse' : ''}`}></div>
+            <div className="relative bg-[#0A0A0A] rounded-[22px] p-8 h-full border border-white/5">
+              <div className="flex justify-between items-start mb-8">
+                <div><h2 className="text-3xl font-bold text-white">Flash Action ⚡</h2><p className="text-gray-400 text-sm mt-2 max-w-sm">Oferta de tiempo limitado.</p></div>
+                {venue.hasFlashPromo && (<div className="flex flex-col items-end"><span className="text-[10px] uppercase font-bold text-red-500 mb-1">Tiempo</span><div className="bg-red-500/10 border border-red-500/50 text-red-400 font-mono font-bold px-4 py-2 rounded-lg text-xl">{timeLeft}</div></div>)}
+              </div>
+              <div className="space-y-5">
+                <div><label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Título</label><input type="text" disabled={venue.hasFlashPromo} value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="Ej: 2x1 en Copas" className="w-full mt-2 bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white focus:border-purple-500 outline-none transition-all disabled:opacity-50 text-lg font-medium" /></div>
+                <div><label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Descripción</label><input type="text" disabled={venue.hasFlashPromo} value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="Válido en barra..." className="w-full mt-2 bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white focus:border-purple-500 outline-none" /></div>
+                <div className="grid grid-cols-2 gap-5">
+                  <div><label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Precio</label><input type="text" disabled={venue.hasFlashPromo} value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} placeholder="Ej: 12€" className="w-full mt-2 bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white text-center font-bold" /></div>
+                  <div><label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Duración</label><input type="number" disabled={venue.hasFlashPromo} value={formData.duration} onChange={(e) => setFormData({...formData, duration: Number(e.target.value)})} className="w-full mt-2 bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white text-center font-bold" /></div>
+                </div>
+              </div>
+              <button onClick={toggleFlash} className={`w-full mt-10 py-6 rounded-xl font-black text-xl tracking-widest transition-all shadow-2xl ${venue.hasFlashPromo ? 'bg-gray-900 border border-red-900/50 text-red-500' : 'bg-white text-black'}`}>{venue.hasFlashPromo ? "🛑 DETENER" : "🚀 LANZAR"}</button>
+            </div>
+          </div>
+        </div>
+
+        {/* DERECHA: CONFIGURACIÓN SEMANAL (5/12) */}
+        <div className="lg:col-span-5 space-y-6">
+          
+          {/* 🗓️ AGENDA SEMANAL INTERACTIVA */}
+          <div className="bg-[#0A0A0A] border border-white/10 p-5 rounded-2xl">
+            <div className="flex justify-between items-center mb-6">
+               <span className="text-gray-500 text-xs font-bold uppercase">Agenda Semanal</span>
+               <button 
+                  onClick={saveWeeklySchedule} 
+                  disabled={scheduleLoading}
+                  className="text-xs bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2 rounded-lg transition-all shadow-lg shadow-purple-900/20"
+                >
+                  {scheduleLoading ? "Guardando..." : "💾 Guardar Agenda"}
+               </button>
+            </div>
+
+            {/* Selector de Días (Tabs) */}
+            <div className="flex gap-1 overflow-x-auto pb-2 mb-4 custom-scrollbar">
+              {DAYS_KEYS.map((day, index) => (
+                <button
+                  key={day}
+                  onClick={() => setActiveDayTab(day)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase whitespace-nowrap transition-colors ${
+                    activeDayTab === day 
+                    ? 'bg-white text-black' 
+                    : 'bg-gray-900 text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  {DAYS_LABELS[index].substring(0, 3)}
+                </button>
+              ))}
+            </div>
+
+            {/* Editor del Día Seleccionado */}
+            <div className="bg-white/5 rounded-xl p-4 border border-white/5 animate-in fade-in duration-200">
+              <div className="flex justify-between items-center mb-4">
+                 <h4 className="text-lg font-bold capitalize text-white">{DAYS_LABELS[DAYS_KEYS.indexOf(activeDayTab)]}</h4>
+                 <label className="flex items-center cursor-pointer gap-2">
+                    <span className="text-xs font-bold text-gray-400">{weeklySchedule[activeDayTab]?.isOpen ? 'ABIERTO' : 'CERRADO'}</span>
+                    <div className="relative">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only" 
+                        checked={weeklySchedule[activeDayTab]?.isOpen || false}
+                        onChange={(e) => updateDay(activeDayTab, 'isOpen', e.target.checked)}
+                      />
+                      <div className={`block w-10 h-6 rounded-full transition-colors ${weeklySchedule[activeDayTab]?.isOpen ? 'bg-green-500' : 'bg-gray-700'}`}></div>
+                      <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${weeklySchedule[activeDayTab]?.isOpen ? 'translate-x-4' : ''}`}></div>
+                    </div>
+                 </label>
+              </div>
+
+              {weeklySchedule[activeDayTab]?.isOpen ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                     <label className="text-[10px] text-gray-500 uppercase font-bold block mb-1">Abre</label>
+                     <input 
+                       type="time" 
+                       value={weeklySchedule[activeDayTab]?.open || "23:00"} 
+                       onChange={(e) => updateDay(activeDayTab, 'open', e.target.value)}
+                       className="w-full bg-black border border-gray-700 text-white rounded-lg px-3 py-3 text-center font-mono focus:border-purple-500 outline-none" 
+                     />
+                  </div>
+                  <span className="text-gray-500 font-bold mt-4">➜</span>
+                  <div className="flex-1">
+                     <label className="text-[10px] text-gray-500 uppercase font-bold block mb-1">Cierra</label>
+                     <input 
+                       type="time" 
+                       value={weeklySchedule[activeDayTab]?.close || "06:00"} 
+                       onChange={(e) => updateDay(activeDayTab, 'close', e.target.value)}
+                       className="w-full bg-black border border-gray-700 text-white rounded-lg px-3 py-3 text-center font-mono focus:border-purple-500 outline-none" 
+                     />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-600 text-sm italic">
+                  Local cerrado este día.
+                </div>
+              )}
+            </div>
+            
+            <p className="text-[10px] text-gray-600 mt-4 text-center">Configura cada día individualmente.</p>
+          </div>
+          
+          {/* Historial (Pequeño abajo) */}
+          <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden h-48 flex flex-col">
+             <div className="p-3 border-b border-white/5"><h3 className="font-bold text-white text-xs">Historial</h3></div>
+             <div className="overflow-y-auto flex-1 p-2 space-y-1 custom-scrollbar">
+                {history.map((item) => (
+                  <div key={item.id} className="flex justify-between p-2 hover:bg-white/5 rounded text-xs text-gray-400">
+                    <span>{item.title}</span><span className="font-mono">{formatDate(item.launchedAt)}</span>
+                  </div>
+                ))}
+             </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/business/page.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { auth, db } from "@/lib/firebase";
+import { collection, getDocs, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+
+import NearbyUsersCounter from "@/components/NearbyUsersCounter";
+import PartnerPromoStats from "@/components/PartnerPromoStats";
+
+interface DaySchedule { open: string; close: string; closed?: boolean; }
+interface Venue {
+  id: string; name: string; location: { latitude: number; longitude: number };
+  hasFlashPromo?: boolean; flashPromoText?: string; flashPrice?: number; flashEndTime?: any;
+  weeklySchedule?: { [key: string]: DaySchedule | undefined; };
+}
+
+export default function BusinessPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [venue, setVenue] = useState<Venue | null>(null);
+  const [promoText, setPromoText] = useState("");
+  const [promoPrice, setPromoPrice] = useState<string>("0");
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const daysMap = [
+    { key: 'monday', label: 'Lunes' }, { key: 'tuesday', label: 'Martes' },
+    { key: 'wednesday', label: 'Miércoles' }, { key: 'thursday', label: 'Jueves' },
+    { key: 'friday', label: 'Viernes' }, { key: 'saturday', label: 'Sábado' },
+    { key: 'sunday', label: 'Domingo' },
+  ];
+
+  const handleUnauthorized = () => {
+    const storedAttempts = sessionStorage.getItem("access_attempts");
+    const attempts = storedAttempts ? parseInt(storedAttempts) : 0;
+    const newAttempts = attempts + 1;
+    sessionStorage.setItem("access_attempts", newAttempts.toString());
+    
+    if (newAttempts >= 3) {
+      router.push("/register");
+    } else {
+      router.push("/perfil");
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      // 1. Si es ANÓNIMO o NULL -> Fuera
+      if (!user || user.isAnonymous) {
+        handleUnauthorized();
+        return; 
+      }
+
+      // 2. Si es Logueado, validamos si tiene Venue (es Partner)
+      try {
+        const snapshot = await getDocs(collection(db, "venues")); // Demo: Trae 1ra venue
+        
+        if (!snapshot.empty) {
+          // ES PARTNER VÁLIDO
+          sessionStorage.removeItem("access_attempts"); 
+          const docData = snapshot.docs[0];
+          const v = { id: docData.id, ...docData.data() } as Venue;
+          setVenue(v);
+          setPromoText(v.flashPromoText || "¡Chupito GRATIS entrando ahora!");
+          setPromoPrice(v.flashPrice?.toString() || "0");
+        } else {
+          // ES USUARIO LOGUEADO PERO SIN VENUE (Viber colado) -> Fuera
+          handleUnauthorized();
+          return;
+        }
+      } catch (error) {
+        console.error("Error cargando:", error);
+      } finally {
+        setLoading(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  const toggleFlashPromo = async () => {
+    if (!venue) return;
+    setIsUpdating(true);
+    const newState = !venue.hasFlashPromo;
+    const priceNum = parseFloat(promoPrice) || 0;
+    try {
+      const venueRef = doc(db, "venues", venue.id);
+      await updateDoc(venueRef, {
+        hasFlashPromo: newState, flashPromoText: promoText, flashPrice: priceNum,
+        flashStartTime: newState ? serverTimestamp() : null,
+        flashEndTime: newState ? new Date(Date.now() + 15 * 60 * 1000) : null
+      });
+      setVenue(prev => prev ? ({ ...prev, hasFlashPromo: newState, flashPromoText: promoText, flashPrice: priceNum }) : null);
+    } catch (e) { alert("Error al guardar"); } finally { setIsUpdating(false); }
+  };
+
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-purple-500"></div></div>;
+  if (!venue) return null; // Redirección gestionada arriba
+
+  return (
+    <div className="min-h-screen bg-black text-white p-4 pb-24 font-sans selection:bg-pink-500/30">
+      <header className="flex justify-between items-center mb-8 mt-4">
+        <div><h1 className="text-2xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">PARTNER <span className="text-white not-italic">HUB</span></h1><p className="text-gray-400 text-xs font-bold uppercase tracking-widest">{venue.name}</p></div>
+        <div className="flex items-center gap-3"><button onClick={() => auth.signOut()} className="text-[10px] font-bold text-gray-500 hover:text-white border border-gray-800 px-3 py-1 rounded-full transition-colors">SALIR</button><div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center font-bold text-xs shadow-lg border border-white/20">B2B</div></div>
+      </header>
+      <main className="space-y-8 max-w-md mx-auto">
+        <section><NearbyUsersCounter venueLat={venue.location.latitude} venueLng={venue.location.longitude} /></section>
+        <section className={`rounded-3xl border transition-all duration-500 p-6 ${venue.hasFlashPromo ? 'bg-purple-900/10 border-purple-500 shadow-[0_0_30px_rgba(168,85,247,0.2)]' : 'bg-[#111] border-gray-800'}`}>
+          <div className="flex justify-between items-center mb-6">
+             <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg transition-colors ${venue.hasFlashPromo ? 'bg-purple-500 text-white animate-pulse' : 'bg-gray-800 text-gray-500'}`}>⚡</div>
+                <div><h3 className="font-bold text-lg leading-none">Flash Action</h3><p className="text-[10px] text-gray-400 uppercase font-bold mt-1">Marketing de Proximidad (25m)</p></div>
+             </div>
+             <button onClick={toggleFlashPromo} disabled={isUpdating} className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${venue.hasFlashPromo ? 'bg-green-500' : 'bg-gray-700'}`}>
+                <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${venue.hasFlashPromo ? 'left-7' : 'left-1'}`}></div>
+             </button>
+          </div>
+          <div className={`space-y-4 transition-all duration-300 ${venue.hasFlashPromo ? 'opacity-100' : 'opacity-50 grayscale'}`}>
+             <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-1">Texto</label><input type="text" value={promoText} onChange={(e) => setPromoText(e.target.value)} disabled={venue.hasFlashPromo} className="w-full bg-black/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-purple-500 outline-none text-sm font-bold" /></div>
+             <div><label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-1">Precio (€)</label><input type="number" value={promoPrice} onChange={(e) => setPromoPrice(e.target.value)} disabled={venue.hasFlashPromo} className="w-full bg-black/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:border-purple-500 outline-none text-sm font-bold" /></div>
+          </div>
+        </section>
+        <section><PartnerPromoStats venueId={venue.id} /></section>
+        <section className="bg-[#111] border border-gray-800 rounded-3xl p-6">
+            <h3 className="text-white font-bold text-lg mb-4 flex items-center gap-2">📅 Agenda Semanal</h3>
+            {venue.weeklySchedule ? (
+                <div className="space-y-3">
+                    {daysMap.map((day) => {
+                        const key = day.key;
+                        const capitalizedKey = key.charAt(0).toUpperCase() + key.slice(1);
+                        const schedule = venue.weeklySchedule?.[key] || venue.weeklySchedule?.[capitalizedKey];
+                        return (
+                            <div key={day.key} className="flex justify-between items-center py-2 border-b border-gray-800 last:border-0">
+                                <span className="text-gray-400 text-sm font-medium w-24">{day.label}</span>
+                                {!schedule || schedule.closed ? <span className="text-xs font-bold text-gray-600 bg-gray-900 px-2 py-1 rounded">CERRADO</span> : <span className="text-white font-mono text-sm">{schedule?.open} - {schedule?.close}</span>}
+                            </div>
+                        );
+                    })}
+                </div>
+            ) : <div className="text-center py-8 text-gray-500 border border-dashed border-gray-800 rounded-xl"><p className="text-sm">Sin horario disponible.</p></div>}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/studio/[[...index]]/page.tsx ---
+
+"use client";
+
+import { NextStudio } from "next-sanity/studio";
+import config from "../../../sanity.config";
+
+export default function StudioPage() {
+  return <NextStudio config={config} />;
+}
+
+--- ARCHIVO: ./app/register/page.tsx ---
+
+"use client";
+
+import { useState } from "react";
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (email !== confirmEmail) { setError("Los correos no coinciden."); return; }
+    if (password !== confirmPassword) { setError("Las contraseñas no coinciden."); return; }
+    setLoading(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", userCredential.user.uid), { email, role: "free", createdAt: serverTimestamp() });
+      router.push("/perfil");
+    } catch (err: any) { setError("Error al crear cuenta."); } finally { setLoading(false); }
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    try {
+      const res = await signInWithPopup(auth, new GoogleAuthProvider());
+      await setDoc(doc(db, "users", res.user.uid), { email: res.user.email, role: "free", createdAt: serverTimestamp() }, { merge: true });
+      router.push("/perfil");
+    } catch (e) { setError("Error Google."); } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 font-sans">
+      <div className="mb-6 text-center"><h1 className="text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-pink-600">REGISTRO <span className="text-white">FREE</span></h1></div>
+      <div className="w-full max-w-sm bg-[#111] border border-gray-800 rounded-3xl p-8 shadow-2xl">
+        <button onClick={handleGoogle} className="w-full bg-white text-black font-bold py-3 rounded-xl mb-6 flex justify-center gap-2">Registrarse con Google</button>
+        <form onSubmit={handleRegister} className="space-y-4">
+          <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-black border border-gray-700 rounded-xl px-4 py-3 text-white" placeholder="Email" />
+          <input type="email" required value={confirmEmail} onChange={e=>setConfirmEmail(e.target.value)} className="w-full bg-black border border-gray-700 rounded-xl px-4 py-3 text-white" placeholder="Confirmar Email" />
+          <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-black border border-gray-700 rounded-xl px-4 py-3 text-white" placeholder="Contraseña" />
+          <input type="password" required value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} className="w-full bg-black border border-gray-700 rounded-xl px-4 py-3 text-white" placeholder="Confirmar Contraseña" />
+          {error && <div className="text-red-500 text-xs text-center">{error}</div>}
+          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-yellow-500 to-orange-600 text-white font-bold py-4 rounded-xl">{loading ? "..." : "REGISTRARME"}</button>
+        </form>
+        <div className="mt-6 text-center"><Link href="/perfil" className="text-xs text-gray-500 hover:text-white">¿Ya tienes cuenta? Entra</Link></div>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/login/page.tsx ---
+
+"use client";
+
+import { useState } from "react";
+import { auth, googleProvider } from "@/lib/firebase"; // Asegúrate de tener esto configurado en tu lib/firebase
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { useRouter } from "next/navigation";
+
+export default function ViberLogin() {
+  const router = useRouter();
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleGoogle = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+      router.push("/"); // Vuelta al mapa
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      if (isRegistering) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      router.push("/"); // Vuelta al mapa
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-sm">
+        <h1 className="text-4xl font-black text-white italic mb-2">VIBER <span className="text-blue-500">ACCESS</span></h1>
+        <p className="text-gray-400 mb-8">Únete a la fiesta.</p>
+
+        {/* Botón Google */}
+        <button 
+          onClick={handleGoogle}
+          className="w-full bg-white text-black font-bold py-3.5 rounded-xl flex items-center justify-center gap-3 hover:bg-gray-200 transition-colors mb-6"
+        >
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="G" />
+          Continuar con Google
+        </button>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className="h-[1px] bg-gray-800 flex-1"></div>
+          <span className="text-xs text-gray-500">O con Email</span>
+          <div className="h-[1px] bg-gray-800 flex-1"></div>
+        </div>
+
+        <form onSubmit={handleEmailAuth} className="space-y-4">
+          <input 
+            type="email" 
+            placeholder="tu@email.com" 
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
+          />
+          <input 
+            type="password" 
+            placeholder="Contraseña" 
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className="w-full bg-gray-900 border border-gray-800 rounded-xl px-4 py-3 text-white focus:border-blue-500 outline-none"
+          />
+          
+          {error && <p className="text-red-500 text-xs">{error}</p>}
+
+          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 rounded-xl transition-all">
+            {isRegistering ? "Crear Cuenta" : "Iniciar Sesión"}
+          </button>
+        </form>
+
+        <p className="text-center mt-6 text-sm text-gray-500">
+          {isRegistering ? "¿Ya tienes cuenta?" : "¿Nuevo aquí?"}
+          <button onClick={() => setIsRegistering(!isRegistering)} className="text-blue-400 font-bold ml-2 hover:underline">
+            {isRegistering ? "Entra" : "Regístrate"}
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/forgot-password/page.tsx ---
+
+"use client";
+import { useState } from "react";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import Link from "next/link";
+
+export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const handle = async (e:any) => { e.preventDefault(); try { await sendPasswordResetEmail(auth, email); setMsg("Enviado."); } catch(e) { setErr("Error."); } };
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+      <div className="w-full max-w-sm bg-[#111] p-8 rounded-3xl border border-gray-800">
+        <h2 className="text-2xl font-black mb-4">Recuperar</h2>
+        {!msg ? <form onSubmit={handle} className="space-y-4"><input type="email" value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-black border border-gray-700 rounded-xl px-4 py-3 text-white" placeholder="Email" /><button type="submit" className="w-full bg-white text-black font-bold py-4 rounded-xl">ENVIAR</button></form> : <div className="text-green-400">{msg}</div>}
+        <Link href="/perfil" className="block text-center mt-6 text-xs text-gray-500">Volver</Link>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/vibes/page.tsx ---
+
+import Link from "next/link";
+import Image from "next/image";
+import { client } from "../../sanity/client";
+
+// OBLIGAMOS A QUE SE ACTUALICE SIEMPRE
+export const dynamic = "force-dynamic";
+
+// FUNCIÓN PARA PEDIR DATOS A SANITY
+async function getPosts() {
+  // [0...8] = Trae las últimas 8 noticias
+  const query = `*[_type == "post"] | order(publishedAt desc)[0...8] {
+    _id,
+    title,
+    "slug": slug.current,
+    "image": mainImage.asset->url,
+    publishedAt,
+    "category": categories[0]->title,
+    excerpt
+  }`;
+  
+  return await client.fetch(query);
+}
+
+export const metadata = {
+  title: 'Vibes | NITVIBES',
+  description: 'Las mejores reseñas y noticias de la noche en Barcelona.',
+};
+
+export default async function VibesPage() {
+  const posts = await getPosts();
+
+  return (
+    <main className="min-h-screen bg-black text-white flex flex-col pb-28">
+      
+      {/* --- CABECERA --- */}
+      <div className="sticky top-0 z-20 bg-black/80 backdrop-blur-md border-b border-gray-800 p-4 flex items-center justify-between">
+        <Link href="/" className="text-yellow-400 font-bold text-xl tracking-tighter">
+          ⚡ NITVIBES
+        </Link>
+        <span className="text-xs font-bold bg-gray-800 px-2 py-1 rounded text-gray-300">VIBES</span>
+      </div>
+
+      {/* --- TÍTULO --- */}
+      <div className="p-6 pt-8">
+        <h1 className="text-3xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+          LATEST VIBES
+        </h1>
+        <p className="text-gray-400 text-sm">
+          Lo que pasa en la noche, se queda aquí.
+        </p>
+      </div>
+
+      {/* --- LISTA DE NOTICIAS --- */}
+      <div className="px-4 space-y-6 max-w-2xl mx-auto flex-grow w-full">
+        
+        {posts.length === 0 && (
+          <div className="text-center text-gray-500 py-10 border border-gray-800 rounded-xl bg-gray-900/50 p-6">
+            <p className="text-2xl mb-2">📭</p>
+            <p>No hay vibes publicados aún.</p>
+          </div>
+        )}
+
+        {/* TARJETAS DE VIBES */}
+        {posts.map((post: any) => (
+          <Link key={post._id} href={`/vibes/${post.slug}`}>
+            <article className="group cursor-pointer bg-gray-900/20 rounded-2xl p-3 border border-gray-800 hover:border-purple-500/50 transition-all mb-6">
+              
+              {/* IMAGEN COMPLETA (object-contain) */}
+              <div className="relative h-56 w-full rounded-xl overflow-hidden mb-3 border border-gray-800 shadow-sm bg-black/50">
+                {post.image ? (
+                  <Image 
+                    src={post.image} 
+                    alt={post.title}
+                    fill
+                    className="object-contain transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-900 flex items-center justify-center text-gray-700 font-bold tracking-widest">
+                      NITVIBES
+                  </div>
+                )}
+                
+                {post.category && (
+                  <div className="absolute top-2 left-2 bg-black/70 backdrop-blur px-2 py-0.5 rounded text-[10px] font-bold text-white border border-white/20 z-10">
+                    {post.category}
+                  </div>
+                )}
+              </div>
+
+              {/* Texto */}
+              <div>
+                <div className="flex items-center gap-2 mb-1 text-[10px] text-gray-500 uppercase tracking-widest">
+                  <span>
+                      {post.publishedAt 
+                          ? new Date(post.publishedAt).toLocaleDateString() 
+                          : "Reciente"}
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold leading-tight mb-2 group-hover:text-purple-400 transition-colors">
+                  {post.title}
+                </h2>
+                {post.excerpt && (
+                  <p className="text-gray-400 text-sm line-clamp-2">
+                      {post.excerpt}
+                  </p>
+                )}
+              </div>
+            </article>
+          </Link>
+        ))}
+      </div>
+    </main>
+  );
+}
+
+--- ARCHIVO: ./app/vibes/[slug]/page.tsx ---
+
+import Link from "next/link";
+import Image from "next/image";
+import { client } from "../../../sanity/client";
+import { PortableText } from "@portabletext/react";
+
+export const dynamic = "force-dynamic";
+
+async function getPost(slug: string) {
+  const query = `*[_type == "post" && slug.current == $slug][0] {
+    title,
+    "image": mainImage.asset->url,
+    publishedAt,
+    "category": categories[0]->title,
+    body
+  }`;
+  return await client.fetch(query, { slug });
+}
+
+export default async function PostPage({ params }: { params: { slug: string } }) {
+  const post = await getPost(params.slug);
+
+  if (!post) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center pb-20">
+        <p className="text-xl text-gray-400">Vibe no encontrado.</p>
+        <Link href="/vibes" className="mt-4 text-cyan-400 hover:underline">Volver a Vibes</Link>
+      </div>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-black text-white pb-28">
+      
+      {/* CABECERA FLOTANTE - Botón Volver corregido */}
+      <div className="sticky top-0 z-20 bg-black/80 backdrop-blur-md border-b border-gray-800 p-4 flex items-center gap-4">
+        <Link href="/vibes" className="text-gray-400 hover:text-white transition-colors flex items-center gap-1 text-sm font-bold uppercase tracking-wider">
+          <span>⬅</span> Vibes
+        </Link>
+      </div>
+
+      {/* IMAGEN DE PORTADA */}
+      {post.image && (
+        <div className="relative w-full h-80 md:h-[50vh] lg:h-[60vh]">
+          <Image 
+            src={post.image} 
+            alt={post.title}
+            fill
+            className="object-cover object-top" 
+            priority 
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+        </div>
+      )}
+
+      {/* CONTENIDO */}
+      <article className="px-5 py-8 max-w-2xl mx-auto relative -mt-24 z-10">
+        <div className="flex items-center gap-3 mb-4">
+            {post.category && (
+                <span className="bg-purple-600 shadow-[0_0_15px_rgba(147,51,234,0.5)] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                    {post.category}
+                </span>
+            )}
+             <span className="text-gray-300 text-xs font-bold uppercase tracking-widest drop-shadow-md">
+                {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : ''}
+             </span>
+        </div>
+
+        <h1 className="text-3xl md:text-5xl font-black mb-8 leading-tight text-white drop-shadow-lg">
+          {post.title}
+        </h1>
+
+        <div className="prose prose-invert prose-lg max-w-none prose-p:text-gray-300 prose-a:text-cyan-400 prose-headings:text-white prose-img:rounded-xl">
+          {post.body ? <PortableText value={post.body} /> : <p className="text-gray-500 italic">Sin contenido...</p>}
+        </div>
+      </article>
+    </main>
+  );
+}
+
+--- ARCHIVO: ./app/mapa/page.tsx ---
+
+import MapboxMap from "../../components/MapboxMap";
+
+export default function MapaPage() {
+  return (
+    <div className="relative w-full h-screen bg-black">
+      {/* El Mapa ocupa toda la pantalla detrás */}
+      <MapboxMap />
+
+      {/* Título flotante encima del mapa (Overlay) */}
+      <div className="absolute top-4 left-0 w-full z-10 text-center pointer-events-none">
+        <h1 className="text-2xl font-black text-transparent bg-clip-text bg-linear-to-r from-neon-green to-white drop-shadow-lg">
+          VIBE MAP
+        </h1>
+      </div>
+      
+      {/* Nota: El menú inferior y el player ya están en el layout, 
+          así que aparecerán encima del mapa automáticamente */}
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/audit/page.tsx ---
+
+"use client";
+import { useEffect, useState } from "react";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+
+export default function AuditPage() {
+  const [logs, setLogs] = useState<string[]>([]);
+  const [envCheck, setEnvCheck] = useState<any>({});
+
+  const addLog = (msg: string) => setLogs((prev) => [...prev, msg]);
+
+  useEffect(() => {
+    // 1. CHEQUEO DE VARIABLES DE ENTORNO
+    const envVars = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? "✅ OK" : "❌ FALTANTE",
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? `✅ ${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}` : "❌ FALTANTE",
+      mapboxToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? "✅ OK" : "❌ FALTANTE",
+    };
+    setEnvCheck(envVars);
+
+    // 2. PRUEBA DE CONEXIÓN A FIREBASE
+    const testConnection = async () => {
+      addLog("📡 Iniciando prueba de conexión a Firestore...");
+      try {
+        if (!db) throw new Error("La instancia 'db' es null. Revisa lib/firebase.ts");
+        
+        const querySnapshot = await getDocs(collection(db, "venues"));
+        addLog(`✅ ¡CONEXIÓN EXITOSA!`);
+        addLog(`📦 Documentos encontrados en 'venues': ${querySnapshot.size}`);
+        
+        if (querySnapshot.size === 0) {
+          addLog("⚠️ La colección existe pero está vacía. ¿Hiciste el import en Rowy?");
+        } else {
+          const names = querySnapshot.docs.map(d => d.data().name).join(", ");
+          addLog(`📝 Nombres recuperados: ${names}`);
+        }
+      } catch (error: any) {
+        addLog(`❌ ERROR FATAL: ${error.message}`);
+        console.error(error);
+        if (error.code === "permission-denied") {
+            addLog("🔒 CAUSA: Reglas de seguridad bloqueadas o mal configuradas.");
+        }
+      }
+    };
+
+    testConnection();
+  }, []);
+
+  return (
+    <div className="p-10 bg-black text-white min-h-screen font-mono">
+      <h1 className="text-3xl font-bold text-yellow-400 mb-6">🕵️ NITVIBES AUDIT</h1>
+      
+      <div className="mb-8 border border-gray-700 p-4 rounded bg-gray-900">
+        <h2 className="text-xl font-bold text-cyan-400 mb-2">1. Variables de Entorno (Codespace)</h2>
+        <ul className="space-y-2">
+          <li>API Key: {envCheck.apiKey}</li>
+          <li>Project ID: {envCheck.projectId}</li>
+          <li>Mapbox Token: {envCheck.mapboxToken}</li>
+        </ul>
+      </div>
+
+      <div className="border border-gray-700 p-4 rounded bg-gray-900">
+        <h2 className="text-xl font-bold text-green-400 mb-2">2. Log de Conexión Firebase</h2>
+        <div className="bg-black p-4 rounded border border-gray-800 text-sm h-64 overflow-auto">
+          {logs.map((log, i) => (
+            <div key={i} className="mb-1 border-b border-gray-800 pb-1">{log}</div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/globals.css ---
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: #000;
+  color: #fff;
+}
+
+--- ARCHIVO: ./app/gov/login/page.tsx ---
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+export default function GovLogin() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  // Igual que Partner: Ignorar anónimos
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((user) => {
+      if (user && !user.isAnonymous) router.push("/gov");
+    });
+    return () => unsub();
+  }, [router]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+      setError("Acceso denegado.");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 font-sans">
+      <h1 className="text-3xl font-black italic mb-6 text-yellow-500">GOV ACCESS</h1>
+      <div className="w-full max-w-sm bg-[#111] border border-gray-800 rounded-3xl p-8">
+        <form onSubmit={handleLogin} className="space-y-4">
+            <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} className="w-full bg-black border border-gray-700 rounded-xl px-4 py-3" placeholder="Email Gov" />
+            <input type="password" required value={password} onChange={e=>setPassword(e.target.value)} className="w-full bg-black border border-gray-700 rounded-xl px-4 py-3" placeholder="Contraseña" />
+            {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+            <button type="submit" className="w-full bg-white text-black font-bold py-4 rounded-xl">ENTRAR</button>
+        </form>
+        <Link href="/perfil" className="block text-center mt-6 text-xs text-gray-500">← Volver</Link>
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/gov/dashboard/page.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
+
+export default function GovDashboard() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((user) => {
+      // Protección estricta: Si es anónimo o null -> Login Gov
+      if (!user || user.isAnonymous) {
+        router.push("/gov/login");
+        return;
+      }
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [router]);
+
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-yellow-500"></div></div>;
+
+  return (
+    <div className="min-h-screen bg-black text-white p-8 font-sans text-center">
+      <h1 className="text-3xl font-black text-yellow-500 mb-4">PANEL DE GOBIERNO</h1>
+      <p className="text-gray-400 mb-8">Bienvenido al área de gestión pública.</p>
+      <button onClick={() => auth.signOut()} className="bg-gray-800 px-6 py-2 rounded-full text-xs font-bold hover:bg-gray-700">CERRAR SESIÓN</button>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/gov/page.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
+
+export default function GovDashboard() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((user) => {
+      // Protección estricta: Si es anónimo o null -> Login Gov
+      if (!user || user.isAnonymous) {
+        router.push("/gov/login");
+        return;
+      }
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [router]);
+
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-yellow-500"></div></div>;
+
+  return (
+    <div className="min-h-screen bg-black text-white p-8 font-sans text-center">
+      <h1 className="text-3xl font-black text-yellow-500 mb-4">PANEL DE GOBIERNO</h1>
+      <p className="text-gray-400 mb-8">Bienvenido al área de gestión pública.</p>
+      <button onClick={() => auth.signOut()} className="bg-gray-800 px-6 py-2 rounded-full text-xs font-bold hover:bg-gray-700">CERRAR SESIÓN</button>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/page.tsx ---
+
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
+
+export default function Home() {
+  const { t } = useLanguage();
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 md:p-24 relative overflow-hidden bg-black">
+      
+      {/* 🖼️ FONDO: Tu imagen hero-bg.jpg */}
+      <div className="absolute inset-0 z-0">
+        <Image 
+          src="/hero-bg.jpg" 
+          alt="Nitvibes Barcelona Party" 
+          fill 
+          className="object-cover"
+          priority // Carga prioritaria para que salga al instante
+          quality={90}
+        />
+        {/* Capa oscura para que el texto blanco se lea bien sobre la foto */}
+        <div className="absolute inset-0 bg-black/50"></div>
+      </div>
+
+      {/* 📝 CONTENIDO: Texto Traducido */}
+      <div className="z-10 relative text-center space-y-6 max-w-4xl px-4 animate-in fade-in zoom-in duration-1000">
+        
+        {/* Logo Marca */}
+        <div className="mb-6 inline-flex items-center justify-center">
+           <span className="bg-[#FFD700] text-black font-black px-2 py-1 text-2xl uppercase tracking-tighter shadow-[0_0_15px_rgba(255,215,0,0.5)]">N</span>
+           <span className="text-[#FFD700] font-black text-3xl tracking-tighter ml-2 italic drop-shadow-md">NITVIBES</span>
+        </div>
+
+        {/* Título Principal */}
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white tracking-tight leading-tight drop-shadow-xl">
+          {t('hero_title')}
+        </h1>
+        
+        {/* Subtítulo */}
+        <p className="text-xl md:text-3xl text-gray-100 font-bold italic drop-shadow-lg max-w-2xl mx-auto">
+          {t('hero_subtitle')}
+        </p>
+
+        {/* Botones de Acción */}
+        <div className="flex flex-col sm:flex-row gap-5 justify-center mt-10">
+          <Link href="/mapa">
+            <button className="group bg-green-600/20 hover:bg-green-500 text-white border-2 border-green-500 px-8 py-3 rounded-full font-bold text-lg transition-all duration-300 backdrop-blur-sm flex items-center justify-center gap-2 w-full sm:w-auto shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] active:scale-95">
+              <span>🗺️</span> {t('btn_map')}
+            </button>
+          </Link>
+          <Link href="/vibes">
+            <button className="group bg-yellow-500/20 hover:bg-yellow-400 text-white hover:text-black border-2 border-yellow-400 px-8 py-3 rounded-full font-bold text-lg transition-all duration-300 backdrop-blur-sm flex items-center justify-center gap-2 w-full sm:w-auto shadow-[0_0_20px_rgba(250,204,21,0.3)] hover:shadow-[0_0_30px_rgba(250,204,21,0.6)] active:scale-95">
+               <span>✨</span> {t('btn_vibes')}
+            </button>
+          </Link>
+        </div>
+      </div>
+      
+    </main>
+  );
+}
+
+--- ARCHIVO: ./app/admin/login/page.tsx ---
+
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { validateAdminCredentials } from "@/app/actions/admin-auth"; 
+
+export default function AdminLogin() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const result = await validateAdminCredentials(email, password);
+
+      if (result.success && result.role) {
+        // ✅ Guardamos sesión y EL ROL ESPECÍFICO
+        localStorage.setItem("nitvibes_admin_session", "true");
+        localStorage.setItem("nitvibes_admin_role", result.role); // 'admin' o 'collab'
+        localStorage.setItem("nitvibes_admin_email", email);
+        
+        router.push("/admin");
+      } else {
+        setError(result.error || "Acceso denegado.");
+        setLoading(false);
+      }
+    } catch (e: any) {
+      console.error(e);
+      setError("Error del sistema.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 text-white font-sans">
+      
+      <div className="w-full max-w-sm border border-gray-800 bg-gray-900/50 p-8 rounded-2xl backdrop-blur-xl shadow-2xl">
+        
+        <div className="text-center mb-10">
+          <div className="inline-block mb-4 p-3 rounded-full bg-red-500/10 border border-red-500/20 text-red-500">
+            🛡️
+          </div>
+          <h1 className="text-2xl font-black tracking-wider uppercase text-gray-200">
+            Team Access
+          </h1>
+          <p className="text-xs text-gray-500 mt-2 font-mono uppercase tracking-widest">
+            Uso interno exclusivamente
+          </p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-1 mb-1 block">
+              ID Corporativo
+            </label>
+            <input 
+              type="email" 
+              placeholder="user@nitvibes.com" 
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all font-mono text-sm"
+              required
+            />
+          </div>
+
+          <div>
+             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-1 mb-1 block">
+              Clave de Seguridad
+            </label>
+            <input 
+              type="password" 
+              placeholder="••••••••••••" 
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full bg-black/50 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none transition-all font-mono text-sm"
+              required
+            />
+          </div>
+          
+          {error && (
+            <div className="bg-red-900/20 border border-red-900/50 text-red-400 text-xs p-3 rounded text-center font-bold animate-pulse">
+              ⚠️ {error}
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-white text-black font-bold py-3.5 rounded-lg hover:bg-gray-200 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+          >
+            {loading ? "VERIFICANDO..." : "INICIAR SESIÓN"}
+          </button>
+        </form>
+
+        <div className="mt-8 text-center">
+          <Link href="/" className="text-[10px] text-gray-600 hover:text-white transition-colors uppercase tracking-widest">
+            ← Volver a Plataforma
+          </Link>
+        </div>
+
+      </div>
+      
+      <div className="mt-8 text-[10px] text-gray-700 font-mono">
+        SECURE SYSTEM v2.3 • MULTI-ROLE SUPPORT
+      </div>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./app/admin/page.tsx ---
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase"; // Mantenemos auth por si acaso, aunque priorizamos local
+import CrowdScanner from "@/components/CrowdScanner";
+
+export default function AdminPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>(""); // 'admin' | 'collab'
+
+  useEffect(() => {
+    // 1. Verificación Híbrida
+    const adminSession = localStorage.getItem("nitvibes_admin_session");
+    const storedEmail = localStorage.getItem("nitvibes_admin_email");
+    const storedRole = localStorage.getItem("nitvibes_admin_role");
+
+    if (adminSession === "true") {
+      setUserEmail(storedEmail || "Team Member");
+      setUserRole(storedRole || "collab"); // Por seguridad, fallback a collab
+      setLoading(false);
+      return; 
+    }
+
+    // Fallback Firebase (opcional)
+    const unsub = auth.onAuthStateChanged((u) => {
+      if (u) {
+        setUserEmail(u.email || "Firebase User");
+        setUserRole("collab"); // Usuarios de firebase genéricos son collab por defecto
+        setLoading(false);
+      } else {
+        router.push("/admin/login");
+      }
+    });
+
+    return () => unsub();
+  }, [router]);
+
+  // 👋 FUNCIÓN DE LOGOUT
+  const handleLogout = () => {
+    // Limpiamos todo rastro local
+    localStorage.removeItem("nitvibes_admin_session");
+    localStorage.removeItem("nitvibes_admin_email");
+    localStorage.removeItem("nitvibes_admin_role");
+    // Logout de firebase por si acaso
+    auth.signOut();
+    // Redirigir
+    router.push("/admin/login");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="h-8 w-8 bg-purple-600 rounded-full animate-ping"></div>
+          <p className="text-xs font-mono text-purple-400">VERIFICANDO PERMISOS...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-white p-4 md:p-8 font-sans selection:bg-purple-500/30 pb-20">
+       
+       {/* HEADER DEL ADMIN */}
+       <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/5 pb-8">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500">
+              NITVIBES <span className="text-white not-italic">COMMAND</span>
+            </h1>
+            <p className="text-gray-400 text-sm mt-2 font-medium">
+              Panel de Control Central & Operaciones
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-4 bg-white/5 p-2 pr-4 rounded-full border border-white/5">
+             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-lg ${userRole === 'admin' ? 'bg-gradient-to-tr from-purple-600 to-red-600' : 'bg-gradient-to-tr from-blue-600 to-cyan-600'}`}>
+                {userRole === 'admin' ? 'AD' : 'CL'}
+             </div>
+             <div className="text-right hidden sm:block">
+                <p className="text-xs font-bold text-white uppercase tracking-wider">{userEmail}</p>
+                <p className={`text-[10px] font-mono tracking-widest ${userRole === 'admin' ? 'text-red-400' : 'text-cyan-400'}`}>
+                  ● {userRole === 'admin' ? 'MASTER ADMIN' : 'COLLABORATOR'}
+                </p>
+             </div>
+             
+             <div className="h-6 w-[1px] bg-white/10 mx-2"></div>
+
+             {/* BOTONES DE ACCIÓN */}
+             <button 
+               onClick={() => router.push('/')}
+               className="text-xs font-bold text-gray-400 hover:text-white transition-colors"
+               title="Ver web pública"
+             >
+               WEB ↗
+             </button>
+             
+             <button 
+               onClick={handleLogout}
+               className="px-4 py-2 rounded-full bg-red-600/10 hover:bg-red-600 text-red-500 hover:text-white text-xs font-bold transition-all border border-red-600/30"
+             >
+               SALIR
+             </button>
+          </div>
+       </header>
+
+       <main className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* IZQUIERDA: CEREBRO OPERATIVO (8 columnas) */}
+          <div className="lg:col-span-8 space-y-8">
+             
+             {/* 🔒 PROTECCIÓN: SOLO ADMIN VE EL CEREBRO */}
+             {userRole === 'admin' ? (
+                <CrowdScanner />
+             ) : (
+                // MENSAJE PARA COLABORADORES
+                <div className="bg-[#0F0F0F] border border-white/10 rounded-3xl p-10 flex flex-col items-center justify-center text-center h-64 opacity-50">
+                  <div className="text-4xl mb-4">🔒</div>
+                  <h3 className="text-xl font-bold text-gray-500">Módulo Restringido</h3>
+                  <p className="text-sm text-gray-600 max-w-md mt-2">
+                    La gestión automatizada de aforos ("Cerebro Semanal") está reservada para el nivel Master Admin.
+                  </p>
+                </div>
+             )}
+
+          </div>
+
+          {/* DERECHA: HERRAMIENTAS DE GESTIÓN (4 columnas) */}
+          <div className="lg:col-span-4 space-y-6">
+             
+             {/* CMS - Disponible para todos */}
+             <div className="group relative rounded-3xl bg-[#0F0F0F] border border-white/10 p-6 overflow-hidden hover:border-orange-500/50 transition-all duration-300 shadow-2xl">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-600/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                <div className="relative z-10">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 text-2xl">✏️</div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-orange-500 bg-orange-500/10 px-2 py-1 rounded">CMS</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">Sanity Studio</h3>
+                  <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+                     Gestor de contenido. Noticias, blog y configuración.
+                  </p>
+                  <a href="/studio" target="_blank" className="flex items-center justify-center w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-orange-900/20 group-hover:shadow-orange-900/40 active:scale-[0.98]">
+                    ABRIR EDITOR 🚀
+                  </a>
+                </div>
+             </div>
+
+             {/* ESTADO DEL SISTEMA */}
+             <div className="rounded-3xl bg-[#0F0F0F] border border-white/10 p-6 flex flex-col gap-4">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Estado del Sistema</h3>
+                <div className="flex justify-between items-center p-3 bg-black/40 rounded-xl border border-white/5">
+                   <span className="text-sm text-gray-300">Role Actual</span>
+                   <span className={`text-xs font-bold px-2 py-1 rounded ${userRole === 'admin' ? 'bg-red-500/20 text-red-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
+                     {userRole.toUpperCase()}
+                   </span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-black/40 rounded-xl border border-white/5">
+                   <span className="text-sm text-gray-300">Base de Datos</span>
+                   <span className="flex h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_lime]"></span>
+                </div>
+             </div>
+
+          </div>
+       </main>
+    </div>
+  );
+}
+
+--- ARCHIVO: ./context/LanguageContext.tsx ---
+
+"use client";
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { translations, Language } from '@/lib/translations';
+
+type LanguageContextType = {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: keyof typeof translations['es']) => string;
+};
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguage] = useState<Language>('es');
+
+  useEffect(() => {
+    // Intentar recuperar el idioma guardado
+    const saved = localStorage.getItem('nitvibes_lang') as Language;
+    // Verificar que el idioma guardado existe en nuestras traducciones
+    if (saved && translations[saved]) {
+      setLanguage(saved);
+    }
+  }, []);
+
+  const changeLanguage = (lang: Language) => {
+    setLanguage(lang);
+    localStorage.setItem('nitvibes_lang', lang);
+  };
+
+  const t = (key: keyof typeof translations['es']) => {
+    // Si la traducción no existe en el idioma actual, usa español (fallback)
+    // O devuelve la propia clave si todo falla
+    if (!translations[language]) return translations['es'][key] || key;
+    return translations[language][key] || translations['es'][key] || key;
+  };
+
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage: changeLanguage, t }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useLanguage() {
+  const context = useContext(LanguageContext);
+  if (!context) throw new Error("useLanguage debe usarse dentro de un LanguageProvider");
+  return context;
+}
