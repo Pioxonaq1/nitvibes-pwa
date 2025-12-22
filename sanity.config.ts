@@ -4,7 +4,6 @@ import { defineConfig } from 'sanity'
 import { structureTool } from 'sanity/structure'
 import { visionTool } from '@sanity/vision'
 
-// Definimos un esquema básico para "Vibes" (Noticias/Eventos)
 const vibeSchema = {
   name: 'post',
   title: 'Vibe (Post)',
@@ -42,12 +41,12 @@ const vibeSchema = {
 }
 
 export default defineConfig({
-  basePath: '/studio', // 👈 IMPORTANTE: Aquí vivirá el editor
+  basePath: '/studio',
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || '',
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET || 'production',
 
   schema: {
-    types: [vibeSchema], // Añadimos el esquema de Vibe
+    types: [vibeSchema],
   },
 
   plugins: [
