@@ -1,143 +1,94 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { ROUTES } from "@/lib/constants";
-import { User, Briefcase, Shield, Building2, ChevronRight, Loader2 } from "lucide-react";
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { ROUTES } from '@/lib/constants';
+import { LogOut, MapPin, Edit2, User } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 export default function PerfilPage() {
-  const { user, loading } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [viberData, setViberData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // LÓGICA DE REDIRECCIÓN AUTOMÁTICA (El "Trampolín")
+  // Cargar datos reales de Rowy
   useEffect(() => {
-    if (!loading && user) {
-      setIsRedirecting(true);
-      
-      // 1. Lógica para TEAM (Admin/Colaboradores)
-      // Usamos los mismos emails que definimos en el Dashboard
-      const isTeam = user.email === 'pioxonaq@gmail.com' || user.email?.includes('@nitvibes.com') || user.email === 'admin@nitvibes.com';
-      
-      if (isTeam) {
-        router.push(ROUTES.ADMIN_DASHBOARD); // Te manda a /admin
-      } 
-      // 2. Lógica para PARTNER (Negocios)
-      // (Por ahora simplificada, luego usaremos Claims de Firebase)
-      else if (window.location.href.includes('business')) {
-        router.push(ROUTES.PARTNER_DASHBOARD);
+    const fetchProfile = async () => {
+      if (user?.uid) {
+        try {
+          const docRef = doc(db, "viber", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setViberData(docSnap.data());
+          }
+        } catch (error) {
+          console.error("Error cargando perfil:", error);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
       }
-      // 3. Por defecto: VIBER (Usuario Normal)
-      else {
-        // Si no es Team ni Partner identificado, se queda aquí o va a su perfil de usuario
-        setIsRedirecting(false); // Cancelamos redirect para mostrar perfil de usuario
-      }
-    }
-  }, [user, loading, router]);
+    };
+    fetchProfile();
+  }, [user]);
 
-  // Pantalla de Carga mientras decide
-  if (loading || isRedirecting) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
-        <Loader2 className="animate-spin text-purple-500 mb-4" size={40} />
-        <p className="text-xs text-gray-500 animate-pulse">Verificando credenciales...</p>
-      </div>
-    );
+  const handleLogout = async () => {
+    await logout();
+    router.push(ROUTES.HOME);
+  };
+
+  if (!user) {
+     router.push(ROUTES.HOME); 
+     return null;
   }
 
-  // --- SI YA ESTÁ LOGUEADO (Y es Viber/Usuario) ---
-  if (user) {
-    return (
-      <div className="min-h-screen bg-black text-white p-6 pb-24">
-        <h1 className="text-2xl font-bold mb-4">Mi Perfil Viber</h1>
-        <p className="text-gray-400">Bienvenido, {user.email}</p>
-        {/* Aquí iría el contenido del perfil de usuario normal */}
-      </div>
-    );
-  }
-
-  // --- SI ES ANÓNIMO: PANTALLA DE SELECCIÓN DE ID (ID SCREEN) ---
   return (
-    <div className="min-h-screen bg-black text-white p-6 pb-24 flex flex-col justify-center">
-      
-      <div className="mb-10 text-center">
-        <h1 className="text-3xl font-black tracking-tighter mb-2 text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">
-          IDENTIDAD
-        </h1>
-        <p className="text-gray-400 text-sm">Selecciona tu nivel de acceso</p>
-      </div>
+    <div className="min-h-screen bg-black text-white p-6 pb-24">
+      <header className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-black italic">MI PERFIL</h1>
+        <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500 bg-red-900/10 hover:bg-red-900/30">
+          <LogOut size={20} />
+        </Button>
+      </header>
 
-      <div className="grid gap-4 max-w-md mx-auto w-full">
+      {/* Tarjeta de Usuario */}
+      <div className="bg-zinc-900/50 border border-white/10 rounded-3xl p-6 text-center relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-purple-900/20 to-transparent"></div>
         
-        {/* 1. OPCIÓN VIBER (Usuario) */}
-        <button 
-          onClick={() => router.push(ROUTES.LOGIN)}
-          className="group relative bg-[#111] hover:bg-[#161616] border border-gray-800 p-5 rounded-2xl flex items-center justify-between transition-all duration-300"
-        >
-          <div className="flex items-center gap-4">
-            <div className="bg-purple-900/20 p-3 rounded-full text-purple-400 group-hover:scale-110 transition-transform">
-              <User size={24} />
-            </div>
-            <div className="text-left">
-              <span className="block font-bold text-white text-lg">Viber</span>
-              <span className="text-xs text-gray-500">Usuario Free & Social</span>
-            </div>
-          </div>
-          <ChevronRight className="text-gray-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
-        </button>
+        <div className="relative z-10 mx-auto w-24 h-24 rounded-full bg-zinc-800 border-4 border-black flex items-center justify-center overflow-hidden mb-4">
+            {viberData?.foto ? (
+                <img src={viberData.foto} alt="Perfil" className="w-full h-full object-cover" />
+            ) : (
+                <User size={40} className="text-zinc-500" />
+            )}
+        </div>
 
-        {/* 2. OPCIÓN PARTNER (Negocio) */}
-        <button 
-          onClick={() => router.push('/business/login')}
-          className="group relative bg-[#111] hover:bg-[#161616] border border-gray-800 p-5 rounded-2xl flex items-center justify-between transition-all duration-300"
-        >
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-900/20 p-3 rounded-full text-blue-400 group-hover:scale-110 transition-transform">
-              <Briefcase size={24} />
-            </div>
-            <div className="text-left">
-              <span className="block font-bold text-white text-lg">Partner</span>
-              <span className="text-xs text-gray-500">Gestión de Venue</span>
-            </div>
-          </div>
-          <ChevronRight className="text-gray-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
-        </button>
+        <h2 className="text-xl font-bold mb-1">{viberData?.nombre || user.displayName || "Usuario Viber"}</h2>
+        <p className="text-zinc-500 text-sm mb-4">{user.email}</p>
 
-        {/* 3. OPCIÓN TEAM (Admin/Colab) - ESTA ES LA REGLA QUE PEDISTE */}
-        <button 
-          onClick={() => router.push(ROUTES.ADMIN_LOGIN)} // Manda al Login de Admin
-          className="group relative bg-[#111] hover:bg-[#161616] border border-red-900/20 p-5 rounded-2xl flex items-center justify-between transition-all duration-300"
-        >
-          <div className="flex items-center gap-4">
-            <div className="bg-red-900/20 p-3 rounded-full text-red-500 group-hover:scale-110 transition-transform">
-              <Shield size={24} />
-            </div>
-            <div className="text-left">
-              <span className="block font-bold text-white text-lg">Team</span>
-              <span className="text-xs text-gray-500">Acceso Corporativo</span>
-            </div>
-          </div>
-          <ChevronRight className="text-gray-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
-        </button>
+        {viberData?.biografia && (
+            <p className="text-gray-300 text-sm italic mb-4">"{viberData.biografia}"</p>
+        )}
 
-        {/* 4. OPCIÓN GOV */}
-        <button 
-          onClick={() => router.push('/gov/login')}
-          className="group relative opacity-50 hover:opacity-100 bg-[#111] hover:bg-[#161616] border border-gray-800 p-5 rounded-2xl flex items-center justify-between transition-all duration-300"
-        >
-          <div className="flex items-center gap-4">
-            <div className="bg-green-900/20 p-3 rounded-full text-green-400 group-hover:scale-110 transition-transform">
-              <Building2 size={24} />
-            </div>
-            <div className="text-left">
-              <span className="block font-bold text-white text-lg">Gov</span>
-              <span className="text-xs text-gray-500">Ayuntamiento / Entidad</span>
-            </div>
-          </div>
-          <ChevronRight className="text-gray-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
-        </button>
+        <div className="flex justify-center gap-2 mb-6">
+            <span className="px-3 py-1 rounded-full bg-zinc-800 text-xs text-zinc-400 flex items-center gap-1">
+                <MapPin size={12} /> {viberData?.ciudad || "Ciudad desconocida"}
+            </span>
+        </div>
 
+        <div className="grid grid-cols-2 gap-3">
+             <Button variant="outline" className="border-zinc-700 hover:bg-zinc-800 text-xs" onClick={() => router.push('/business/login')}>
+                Soy Partner
+             </Button>
+             <Button variant="outline" className="border-zinc-700 hover:bg-zinc-800 text-xs" onClick={() => router.push('/gov/login')}>
+                Soy Gov
+             </Button>
+        </div>
       </div>
     </div>
   );
