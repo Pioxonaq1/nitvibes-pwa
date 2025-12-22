@@ -3,7 +3,7 @@ export const USER_ROLES = {
   PARTNER: 'partner',
   GOV: 'gov',
   USER: 'user',
-  VIBER: 'viber' // Usuario registrado avanzado
+  VIBER: 'viber'
 };
 
 export const APP_CONFIG = {
@@ -17,3 +17,17 @@ export const NAV_LINKS = [
   { name: 'Vibes', href: '/vibes' },
   { name: 'Perfil', href: '/perfil' },
 ];
+
+// 👇 ESTO ES LO QUE FALTABA
+export const ROUTES = {
+  HOME: '/',
+  LOGIN: '/login',
+  REGISTER: '/register',
+  ADMIN_LOGIN: '/admin/login',
+  ADMIN_DASHBOARD: '/admin',
+  PARTNER_DASHBOARD: '/business',
+  GOV_DASHBOARD: '/gov',
+  MAP: '/mapa',
+  VIBES: '/vibes',
+  PROFILE: '/perfil',
+};
