@@ -1,21 +1,23 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-
-// 1. Componentes Visuales
-import BottomNav from "@/components/BottomNav";
-import Footer from "@/components/Footer";
-
-// 2. Providers (Contextos)
 import { LanguageProvider } from "@/context/LanguageContext";
-import { AuthProvider } from "@/context/AuthContext"; // <--- NUEVO: Importamos el Auth
+import { AuthProvider } from "@/context/AuthContext";
+import BottomMenu from "@/components/BottomMenu"; // Usamos el BUENO
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Nitvibes",
-  description: "Descubre el pulso nocturno de Barcelona",
+  description: "Descubre el vibe de tu ciudad",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -26,17 +28,13 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${inter.className} bg-black text-white antialiased`}>
-        {/* 3. ENVOLVEMOS CON EL AUTH PROVIDER */}
         <AuthProvider>
           <LanguageProvider>
-            
-            {/* Contenido de la página */}
-            {children}
-
-            {/* Elementos Fijos */}
-            <BottomNav />
-            <Footer />
-            
+            <div className="flex flex-col min-h-screen pb-16">
+              {children}
+            </div>
+            {/* El menú de navegación inteligente */}
+            <BottomMenu />
           </LanguageProvider>
         </AuthProvider>
       </body>
