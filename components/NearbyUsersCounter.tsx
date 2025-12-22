@@ -2,7 +2,14 @@
 
 import { Users } from "lucide-react";
 
-export default function NearbyUsersCounter() {
+// 👇 Enseñamos al componente qué datos va a recibir
+interface NearbyUsersCounterProps {
+  venueLat?: number;
+  venueLng?: number;
+}
+
+// 👇 Añadimos las props a la función
+export default function NearbyUsersCounter({ venueLat, venueLng }: NearbyUsersCounterProps) {
   // Dato simulado por ahora
   const count = 124;
 
@@ -18,6 +25,8 @@ export default function NearbyUsersCounter() {
       <p className="text-xs text-blue-300 mt-1">
         +12 en los últimos 15 min
       </p>
+      {/* Opcional: Para debuggear puedes ver que las coordenadas llegan */}
+      {/* <p className="text-[10px] text-gray-500 mt-2">Lat: {venueLat} Lng: {venueLng}</p> */}
     </div>
   );
 }
