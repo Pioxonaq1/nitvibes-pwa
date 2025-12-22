@@ -1,108 +1,104 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Building2, ArrowLeft, Lock, Mail } from 'lucide-react';
+import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { USER_ROLES } from '@/lib/constants';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/lib/constants';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Briefcase, Loader2, Store } from 'lucide-react';
 
-export default function BusinessLoginPage() {
-  const router = useRouter();
-  const { login } = useAuth();
-  
+export default function BusinessLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const { login } = useAuth();
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
 
     try {
-      const venuesRef = collection(db, "venues");
-      // Buscamos coincidencia exacta de credenciales
-      const q = query(
-        venuesRef, 
-        where("b2BEmail", "==", email),
-        where("b2BPassword", "==", password)
-      );
-
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        // DATOS ENCONTRADOS
-        const venueDoc = querySnapshot.docs[0];
-        const venueData = venueDoc.data();
-        const realVenueId = venueDoc.id;
-
-        // 1. MEMORIA OBLIGATORIA (LocalStorage)
-        // Esto asegura que aunque navegue fuera, el sistema sepa quién es.
-        localStorage.setItem('nitvibes_partner_id', realVenueId);
-
-        // 2. Actualizar estado de la App
-        login({
-          id: realVenueId,
-          name: venueData.name || 'Partner',
-          role: USER_ROLES.PARTNER,
-          email: venueData.b2BEmail
-        });
-
-        // 3. Ir al Panel
-        router.push(`/business/dashboard/${realVenueId}`);
-        
-      } else {
-        alert("❌ Credenciales incorrectas.");
-        setLoading(false);
-      }
-
-    } catch (error) {
-      console.error("Error login:", error);
-      alert("Error de conexión.");
+      // ✅ AHORA SÍ: Usamos la función login correctamente (email, password)
+      await login(email, password);
+      
+      // Redirigimos al Dashboard de Business
+      router.push(ROUTES.PARTNER_DASHBOARD || '/business'); 
+    } catch (err: any) {
+      console.error(err);
+      setError('Error de acceso. Verifica tus credenciales de Partner.');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative z-50 font-sans">
-      <div className="w-full max-w-md bg-zinc-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-        <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-purple-900/20 rounded-full flex items-center justify-center mb-4 border border-purple-500/30">
-                <Building2 className="text-purple-500" size={32} />
-            </div>
-            <h1 className="text-2xl font-bold text-white tracking-wider flex items-center gap-2">
-                <span className="text-purple-500 italic">NITVIBES</span> PARTNER
-            </h1>
-            <p className="text-zinc-500 text-[10px] mt-2 font-mono uppercase tracking-widest">
-                Acceso Exclusivo Propietarios
-            </p>
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
+        
+        {/* HEADER */}
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
+            <Store className="h-8 w-8 text-blue-500" />
+          </div>
+          <h2 className="text-3xl font-black text-white tracking-tighter">
+            NITVIBES <span className="text-blue-500">PARTNER</span>
+          </h2>
+          <p className="mt-2 text-sm text-gray-400">Gestión de Venues y Eventos</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Email Corporativo</label>
-            <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ej: local@nitvibes.com" className="w-full bg-zinc-950 text-white px-12 py-3 rounded-lg text-sm font-medium border border-zinc-800 focus:outline-none focus:border-purple-500 transition-all placeholder:text-zinc-600"/>
+        {/* FORMULARIO */}
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <div>
+              <Input
+                type="email"
+                placeholder="Email del Negocio"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 py-6"
+              />
+            </div>
+            <div>
+              <Input
+                type="password"
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 py-6"
+              />
             </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider ml-1">Contraseña</label>
-            <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="•••••••••••••" className="w-full bg-zinc-950 text-white px-12 py-3 rounded-lg text-sm font-medium border border-zinc-800 focus:outline-none focus:border-purple-500 transition-all placeholder:text-zinc-600"/>
+
+          {error && (
+            <div className="p-3 rounded-lg bg-red-900/20 border border-red-900/50">
+                <p className="text-red-400 text-sm text-center font-medium">{error}</p>
             </div>
+          )}
+
+          <Button 
+            type="submit" 
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-6 rounded-xl transition-all"
+            disabled={loading}
+          >
+            {loading ? (
+                <span className="flex items-center gap-2">
+                    <Loader2 className="animate-spin" /> Accediendo...
+                </span>
+            ) : "ENTRAR AL DASHBOARD"}
+          </Button>
+          
+          <div className="text-center mt-4">
+            <p className="text-xs text-zinc-500">
+              ¿No tienes cuenta? <a href="/register" className="text-blue-400 hover:text-blue-300">Regístrate aquí</a>
+            </p>
           </div>
-          <button type="submit" disabled={loading} className="w-full bg-white text-black font-bold py-4 rounded-lg hover:bg-zinc-200 transition-all duration-200 mt-4 flex justify-center items-center gap-2">
-            {loading ? 'VERIFICANDO...' : 'ENTRAR AL PANEL'}
-          </button>
         </form>
-        <div className="mt-8 flex justify-center">
-          <button onClick={() => router.push('/perfil')} className="flex items-center space-x-2 text-zinc-500 hover:text-white transition-colors text-xs">
-            <ArrowLeft size={14} /><span>Volver a Plataforma</span>
-          </button>
-        </div>
       </div>
     </div>
   );
