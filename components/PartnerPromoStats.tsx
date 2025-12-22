@@ -1,24 +1,23 @@
 "use client";
-
-import { BarChart3, TrendingUp } from "lucide-react";
+import { TrendingUp, Users, Calendar } from "lucide-react";
 
 export default function PartnerPromoStats() {
   return (
-    <div className="grid grid-cols-2 gap-4 w-full">
-      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-        <div className="flex items-center gap-2 mb-2 text-gray-400">
-          <BarChart3 className="w-4 h-4" />
-          <span className="text-xs">Vistas Totales</span>
-        </div>
-        <p className="text-2xl font-bold text-white">2.4k</p>
+    <div className="grid grid-cols-3 gap-2">
+      <div className="bg-[#111] p-3 rounded-xl border border-gray-800 flex flex-col items-center justify-center text-center">
+        <TrendingUp size={16} className="text-green-500 mb-1" />
+        <span className="text-xl font-bold text-white">0</span>
+        <span className="text-[9px] text-gray-500 uppercase">Impactos</span>
       </div>
-      
-      <div className="bg-white/5 border border-white/10 p-4 rounded-xl">
-        <div className="flex items-center gap-2 mb-2 text-gray-400">
-          <TrendingUp className="w-4 h-4" />
-          <span className="text-xs">Conversión</span>
-        </div>
-        <p className="text-2xl font-bold text-green-400">18%</p>
+      <div className="bg-[#111] p-3 rounded-xl border border-gray-800 flex flex-col items-center justify-center text-center">
+        <Users size={16} className="text-blue-500 mb-1" />
+        <span className="text-xl font-bold text-white">0</span>
+        <span className="text-[9px] text-gray-500 uppercase">Conectados</span>
+      </div>
+      <div className="bg-[#111] p-3 rounded-xl border border-gray-800 flex flex-col items-center justify-center text-center">
+        <Calendar size={16} className="text-purple-500 mb-1" />
+        <span className="text-xl font-bold text-white">--</span>
+        <span className="text-[9px] text-gray-500 uppercase">Próx. Evento</span>
       </div>
     </div>
   );
