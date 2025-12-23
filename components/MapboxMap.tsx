@@ -6,49 +6,70 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
+// Función conversora: de coordenadas Rowy (41°22'27"N) a Decimal (41.3741) [cite: 2025-12-18]
+const parseDMS = (dmsString: string) => {
+  if (!dmsString || typeof dmsString !== 'string') return null;
+  
+  // Regex para capturar grados, minutos, segundos y dirección [cite: 2025-12-18]
+  const dmsRegex = /(\d+)\u00B0(\d+)'([\d.]+)"([NSEW])/g;
+  const matches = [...dmsString.matchAll(dmsRegex)];
+  
+  if (matches.length < 2) return null;
+
+  const convert = (degrees: string, minutes: string, seconds: string, direction: string) => {
+    let dd = Number(degrees) + Number(minutes) / 60 + Number(seconds) / 3600;
+    if (direction === "S" || direction === "W") dd = dd * -1;
+    return dd;
+  };
+
+  const lat = convert(matches[0][1], matches[0][2], matches[0][3], matches[0][4]);
+  const lon = convert(matches[1][1], matches[1][2], matches[1][3], matches[1][4]);
+
+  return { lat, lon };
+};
+
 export default function MapboxMap() {
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
   const [venues, setVenues] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Carga de Venues reales desde Firebase [cite: 2025-12-18, 2025-12-19]
+  // 1. Carga y procesamiento de datos de Firebase/Rowy [cite: 2025-12-18]
   useEffect(() => {
     const fetchVenues = async () => {
       try {
-        console.log("📡 Conectando con Firestore...");
+        console.log("📡 Sincronizando con Rowy/Firebase...");
         const querySnapshot = await getDocs(collection(db, "venues"));
         
         const venuesData = querySnapshot.docs.map(doc => {
           const data = doc.data();
-          // Normalización para detectar coordenadas sin importar el nombre del campo [cite: 2025-12-18]
-          const lat = data.lat || data.latitude || data.latitud;
-          const lon = data.lon || data.longitude || data.longitud;
+          // Intentamos convertir el campo 'location' de Rowy [cite: 2025-12-18]
+          const coords = parseDMS(data.location) || { 
+            lat: parseFloat(data.lat || data.latitude), 
+            lon: parseFloat(data.lon || data.longitude) 
+          };
 
           return {
             id: doc.id,
-            name: data.name || "Venue sin nombre",
-            lat: Number(lat),
-            lon: Number(lon),
+            name: data.name || "Venue",
+            ...coords
           };
-        });
+        }).filter(v => !isNaN(v.lat) && !isNaN(v.lon)); // Solo locales con coordenadas válidas [cite: 2025-12-18]
 
-        console.log("✅ Venues obtenidas:", venuesData);
         setVenues(venuesData);
+        console.log("✅ Venues listas para mapear:", venuesData);
       } catch (error) {
-        console.error("❌ Error Firebase:", error);
+        console.error("❌ Error en la sincronización:", error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchVenues();
   }, []);
 
-  // 2. Inicialización del Mapa [cite: 2025-12-18, 2025-12-23]
+  // 2. Inicialización de Mapbox con los 15 locales [cite: 2025-12-18, 2025-12-23]
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    // No iniciamos el mapa hasta tener el token y las venues cargadas [cite: 2025-12-18]
     if (!token || !mapContainer.current || venues.length === 0) return;
 
     mapboxgl.accessToken = token;
@@ -56,59 +77,52 @@ export default function MapboxMap() {
     const mapInstance = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/dark-v11',
-      center: [2.1734, 41.3851], // Barcelona [cite: 2025-12-19]
-      zoom: 13,
-      pitch: 45
+      center: [2.1734, 41.3851], // Centro de Barcelona [cite: 2025-12-19]
+      zoom: 12,
+      pitch: 0
     });
 
     mapRef.current = mapInstance as any;
 
     mapInstance.on('load', () => {
-      console.log("🗺️ Mapa cargado correctamente");
       mapInstance.resize();
 
-      // 3. Dibujar Marcadores Reales [cite: 2025-12-18, 2025-12-23]
       venues.forEach(venue => {
-        if (isNaN(venue.lat) || isNaN(venue.lon)) return;
-
-        // Estilo del marcador Nitvibes [cite: 2025-12-23]
+        // Marcador visual estilo Nitvibes [cite: 2025-12-23]
         const el = document.createElement('div');
         el.className = 'marker-venue';
-        el.style.width = '18px';
-        el.style.height = '18px';
-        el.style.backgroundColor = '#4ade80';
+        el.style.width = '14px';
+        el.style.height = '14px';
+        el.style.backgroundColor = '#4ade80'; // Verde Neón [cite: 2025-12-23]
         el.style.borderRadius = '50%';
         el.style.border = '2px solid white';
-        el.style.boxShadow = '0 0 10px rgba(74, 222, 128, 0.8)';
+        el.style.boxShadow = '0 0 10px #4ade80';
 
         new mapboxgl.Marker(el)
           .setLngLat([venue.lon, venue.lat])
-          .setPopup(
-            new mapboxgl.Popup({ offset: 25 })
-              .setHTML(`<b style="color:black">${venue.name}</b>`)
-          )
+          .setPopup(new mapboxgl.Popup({ offset: 10 }).setHTML(`<b style="color:black">${venue.name}</b>`))
           .addTo(mapInstance);
       });
+      
+      console.log(`📍 ${venues.length} marcadores inyectados con éxito.`);
     });
 
-    return () => {
-      if (mapRef.current) (mapRef.current as any).remove();
-    };
+    return () => { if (mapRef.current) (mapRef.current as any).remove(); };
   }, [venues]);
 
   return (
     <div className="relative w-full h-full bg-zinc-950">
-      {/* Spinner de carga [cite: 2025-12-18] */}
+      <div ref={mapContainer} className="w-full h-full" />
+      
+      {/* Overlay de carga para Rowy [cite: 2025-12-18] */}
       {loading && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80">
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-white text-[9px] font-black uppercase tracking-widest">Sincronizando Venues...</p>
-          </div>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-50">
+           <div className="text-center">
+             <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+             <p className="text-white text-[10px] font-black uppercase tracking-[0.3em]">Convirtiendo Coordenadas...</p>
+           </div>
         </div>
       )}
-
-      <div ref={mapContainer} className="w-full h-full" />
     </div>
   );
 }
