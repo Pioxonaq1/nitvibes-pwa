@@ -74,4 +74,26 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Estilos personalizados para los marcadores del mapa [cite: 2025-12-23] */
+.mapboxgl-popup-content {
+  background: white !important;
+  border-radius: 20px !important;
+  padding: 15px !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+}
+
+.mapboxgl-popup-close-button {
+  padding: 8px !important;
+  color: #000 !important;
+}
+
+.venue-marker {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.venue-marker:hover {
+  transform: scale(1.2);
+}
 }
