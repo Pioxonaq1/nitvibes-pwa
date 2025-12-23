@@ -5,7 +5,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAuth } from '@/context/AuthContext';
 
-// Reglas de negocio: 25m brillo, 10m WIFI [cite: 2025-12-19]
+// Reglas de negocio: 25m para rango visual, 10m para interacción WIFI [cite: 2025-12-19]
 const GEOFENCE_RADIUS_KM = 0.025; 
 const WIFI_RADIUS_KM = 0.010;     
 
@@ -18,9 +18,9 @@ interface Venue {
 }
 
 export default function MapboxMap() {
-  // Cambiamos la sintaxis para evitar que el compilador se confunda con operadores matemáticos [cite: 2025-12-18]
+  // SOLUCIÓN DEFINITIVA: Declaración sin genéricos para evitar el error de compilación [cite: 2025-12-18]
   const mapContainer = useRef(null);
-  const map = useRef(null);
+  const mapRef = useRef(null);
   
   const { user } = useAuth();
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -35,19 +35,16 @@ export default function MapboxMap() {
     const R = 6371;
     const dLat = (coords2[1] - coords1[1]) * Math.PI / 180;
     const dLon = (coords2[0] - coords1[0]) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(coords1[1] * Math.PI / 180) * Math.cos(coords2[1] * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(coords1[1] * Math.PI / 180) * Math.cos(coords2[1] * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
   };
 
   useEffect(() => {
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
-    
-    if (map.current || !mapContainer.current) return;
+    if (!mapContainer.current || mapRef.current) return;
 
-    // Inicialización limpia de Mapbox
+    // Inicialización con casteo de seguridad
     const mapInstance = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/dark-v11',
@@ -56,7 +53,7 @@ export default function MapboxMap() {
       pitch: 45
     });
 
-    (map.current as any) = mapInstance;
+    (mapRef.current as any) = mapInstance;
 
     const geolocate = new mapboxgl.GeolocateControl({
       positionOptions: { enableHighAccuracy: true },
@@ -65,16 +62,18 @@ export default function MapboxMap() {
     });
 
     mapInstance.addControl(geolocate);
-
     geolocate.on('geolocate', (e: any) => {
       setUserLocation([e.coords.longitude, e.coords.latitude]);
     });
+
+    return () => {
+      if (mapRef.current) (mapRef.current as any).remove();
+    };
   }, []);
 
-  // Lógica de Proximidad [cite: 2025-12-19]
+  // Lógica de detección: 10m WIFI / 25m Geofence [cite: 2025-12-19]
   useEffect(() => {
     if (!userLocation) return;
-
     venues.forEach(venue => {
       const dist = calculateDistance(userLocation, venue.coordinates);
       if (dist <= WIFI_RADIUS_KM && activeVenue?.id !== venue.id) {
@@ -85,15 +84,14 @@ export default function MapboxMap() {
     });
   }, [userLocation, activeVenue]);
 
-  // Dibujado de marcadores [cite: 2025-12-23]
+  // Marcadores con lógica de proximidad [cite: 2025-12-23]
   useEffect(() => {
-    const currentMap = map.current as any;
+    const currentMap = mapRef.current as any;
     if (!currentMap) return;
 
     venues.forEach(venue => {
       const el = document.createElement('div');
       el.className = 'venue-marker';
-      
       const isNear = userLocation ? calculateDistance(userLocation, venue.coordinates) <= GEOFENCE_RADIUS_KM : false;
 
       el.style.width = isNear ? '38px' : '28px';
@@ -105,13 +103,11 @@ export default function MapboxMap() {
 
       new mapboxgl.Marker(el)
         .setLngLat(venue.coordinates)
-        .setPopup(
-          new mapboxgl.Popup({ offset: 25 })
-            .setHTML(`<div style="color:black;text-align:center;padding:5px;">
-              <b style="font-size:12px;text-transform:uppercase;">${venue.name}</b><br/>
-              <span style="font-size:9px;">${isNear ? 'DENTRO DE RANGO' : 'DESCUBRE'}</span>
-            </div>`)
-        )
+        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
+          <div style="color:black;text-align:center;padding:5px;">
+            <b style="font-size:12px;">${venue.name}</b><br/>
+            <span style="font-size:9px;">${isNear ? 'DENTRO DE RANGO' : 'DESCUBRE'}</span>
+          </div>`))
         .addTo(currentMap);
     });
   }, [userLocation]);
@@ -120,7 +116,6 @@ export default function MapboxMap() {
     <div className="relative w-full h-full min-h-[calc(100vh-140px)] bg-zinc-900">
       <div ref={mapContainer} className="absolute inset-0" />
       
-      {/* Pop-up WIFI (10m) [cite: 2025-12-19] */}
       {activeVenue && (
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-xs animate-in slide-in-from-bottom duration-500">
           <div className="bg-white rounded-2xl p-5 shadow-2xl flex flex-col items-center text-center">
@@ -128,7 +123,7 @@ export default function MapboxMap() {
               <span className="text-white text-xl">📶</span>
             </div>
             <h2 className="text-black font-black text-sm uppercase tracking-tighter">WIFI {activeVenue.name}</h2>
-            <p className="text-zinc-500 text-[10px] mb-4">Conéctate para ver las promociones exclusivas.</p>
+            <p className="text-zinc-500 text-[10px] mb-4 font-medium">Conéctate para ver las promociones exclusivas.</p>
             <div className="flex gap-2 w-full">
               <button onClick={() => setActiveVenue(null)} className="flex-1 py-2 text-zinc-400 font-bold text-[10px] uppercase">Ignorar</button>
               <button className="flex-1 py-2 bg-black text-white rounded-lg font-black text-[10px] uppercase shadow-lg" onClick={() => alert('Conectando...')}>Conectar</button>
