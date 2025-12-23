@@ -4,28 +4,43 @@ export function useSimulation(count: number, venues: any[]) {
   const users = useRef<any[]>([]);
 
   useEffect(() => {
-    // Inicializamos solo si hay venues reales y no hay usuarios creados [cite: 2025-12-18]
     if (venues.length > 0 && users.current.length === 0) {
-      users.current = Array.from({ length: count }).map(() => ({
-        coords: [2.1734 + (Math.random() - 0.5) * 0.04, 41.3851 + (Math.random() - 0.5) * 0.04],
-        target: venues[Math.floor(Math.random() * venues.length)],
-        speed: 0.00001 + Math.random() * 0.00004,
-        groupId: Math.floor(Math.random() * 1000) // Lógica de grupos [cite: 2025-12-19]
-      }));
+      users.current = Array.from({ length: count }).map(() => {
+        // Seleccionamos una venue de inicio aleatoria [cite: 2025-12-18]
+        const startVenue = venues[Math.floor(Math.random() * venues.length)];
+        
+        return {
+          // Posición inicial con un pequeño desfase para no estar todos en el mismo punto [cite: 2025-12-23]
+          coords: [
+            startVenue.lon + (Math.random() - 0.5) * 0.005,
+            startVenue.lat + (Math.random() - 0.5) * 0.005
+          ],
+          target: venues[Math.floor(Math.random() * venues.length)],
+          speed: 0.000008 + Math.random() * 0.00002, // Velocidad de peatón real [cite: 2025-12-23]
+          jitter: Math.random() * 0.00005, // Variación para simular veredas [cite: 2025-12-23]
+          groupId: Math.floor(Math.random() * 500)
+        };
+      });
     }
   }, [venues, count]);
 
   const updatePositions = () => {
-    if (users.current.length === 0) return { type: 'FeatureCollection', features: [] };
+    if (users.current.length === 0 || venues.length === 0) return { type: 'FeatureCollection', features: [] };
 
     const features = users.current.map((u) => {
-      // Movimiento hacia el destino (lat/lon de Firebase) [cite: 2025-12-18]
-      u.coords[0] += (u.target.lon - u.coords[0]) * u.speed;
-      u.coords[1] += (u.target.lat - u.coords[1]) * u.speed;
+      // Movimiento con "jitter" para evitar líneas rectas artificiales y simular veredas [cite: 2025-12-23]
+      const noiseX = (Math.random() - 0.5) * u.jitter;
+      const noiseY = (Math.random() - 0.5) * u.jitter;
 
-      // Al llegar, cambian a otra venue aleatoria [cite: 2025-12-19]
-      if (Math.abs(u.coords[0] - u.target.lon) < 0.0001) {
-        u.target = venues[Math.floor(Math.random() * venues.length)];
+      u.coords[0] += (u.target.lon - u.coords[0]) * u.speed + noiseX;
+      u.coords[1] += (u.target.lat - u.coords[1]) * u.speed + noiseY;
+
+      // Si llegan a la venue (umbral de 15 metros aprox) [cite: 2025-12-19, 2025-12-23]
+      if (Math.abs(u.coords[0] - u.target.lon) < 0.00015 && Math.abs(u.coords[1] - u.target.lat) < 0.00015) {
+        // Un 80% de probabilidad de ir a otra venue, 20% de quedarse merodeando [cite: 2025-12-23]
+        if (Math.random() > 0.2) {
+          u.target = venues[Math.floor(Math.random() * venues.length)];
+        }
       }
 
       return {

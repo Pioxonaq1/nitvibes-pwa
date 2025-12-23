@@ -13,13 +13,13 @@ export default function MapboxMap() {
   const [venues, setVenues] = useState<any[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
 
-  // 1. CARGA OK (Manteniendo tu lógica de Geopoint) [cite: 2025-12-18]
   useEffect(() => {
     const fetchVenues = async () => {
       try {
         const querySnapshot = await getDocs(collection(db, "venues"));
         const data = querySnapshot.docs.map(doc => {
           const d = doc.data();
+          // Usamos la lógica de Geopoint que ya verificamos [cite: 2025-12-18]
           return {
             id: doc.id,
             name: d.name || "Venue",
@@ -33,8 +33,8 @@ export default function MapboxMap() {
     fetchVenues();
   }, []);
 
-  // 2. INICIALIZAR SIMULADOR [cite: 2025-12-18]
-  const { updatePositions } = useSimulation(5000, venues);
+  // Ahora con 2500 usuarios [cite: 2025-12-23]
+  const { updatePositions } = useSimulation(2500, venues);
 
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -45,20 +45,20 @@ export default function MapboxMap() {
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/dark-v11',
       center: [2.1696, 41.3744],
-      zoom: 13
+      zoom: 14,
+      pitch: 45
     });
     mapRef.current = map;
 
     map.on('load', () => {
       map.resize();
 
-      // Fuente para los 5000 Vibers [cite: 2025-12-18]
       map.addSource('sim-source', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
 
-      // CAPA HEATMAP (Verde-Amarillo-Rojo) [cite: 2025-12-23]
+      // Heatmap para visión lejana [cite: 2025-12-23]
       map.addLayer({
         id: 'viber-heat',
         type: 'heatmap',
@@ -69,24 +69,28 @@ export default function MapboxMap() {
             'interpolate', ['linear'], ['heatmap-density'],
             0, 'rgba(0,0,0,0)', 0.2, '#22c55e', 0.5, '#eab308', 1, '#ef4444'
           ],
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 2, 15, 20]
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 5, 15, 25],
+          'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 15, 0.8, 16, 0]
         }
       });
 
-      // CAPA 1:1 (Círculos que aparecen al acercarse) [cite: 2025-12-23]
+      // Puntos 1:1 para veredas (Zoom 16+) [cite: 2025-12-23]
       map.addLayer({
         id: 'viber-points',
         type: 'circle',
         source: 'sim-source',
         minzoom: 15,
         paint: {
-          'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 15, 2, 21, 20],
+          // Tamaño de aprox 0.8 metros en escala real [cite: 2025-12-23]
+          'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 15, 1.5, 20, 12],
           'circle-color': '#4ade80',
-          'circle-opacity': 0.6
+          'circle-opacity': 0.7,
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#000'
         }
       });
 
-      // Marcadores de Venues (Los que ya funcionan) [cite: 2025-12-18]
+      // Marcadores de Venues reales [cite: 2025-12-18]
       venues.forEach(v => {
         const el = document.createElement('div');
         el.style.cssText = 'width:12px; height:12px; background:#4ade80; border-radius:50%; border:2px solid white; box-shadow:0 0 10px #4ade80;';
@@ -100,7 +104,6 @@ export default function MapboxMap() {
     return () => map.remove();
   }, [venues]);
 
-  // LOOP DE ANIMACIÓN [cite: 2025-12-18]
   useEffect(() => {
     let frameId: number;
     const animate = () => {
@@ -118,15 +121,14 @@ export default function MapboxMap() {
     <div className="relative w-full h-full bg-black">
       <div ref={mapContainer} className="w-full h-full" />
       
-      {/* BOTÓN DE ACTIVACIÓN [cite: 2025-12-23] */}
       <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-50">
         <button 
           onClick={() => setIsSimulating(!isSimulating)}
-          className={`px-10 py-4 rounded-full font-black text-[11px] uppercase tracking-widest shadow-2xl transition-all active:scale-95 ${
+          className={`px-10 py-4 rounded-full font-black text-[11px] uppercase tracking-widest shadow-2xl transition-all ${
             isSimulating ? 'bg-red-600 text-white' : 'bg-green-500 text-black'
           }`}
         >
-          {isSimulating ? 'Detener Vibers' : 'Simular 5000 Vibers'}
+          {isSimulating ? 'Stop Simulation' : 'Simular 2500 Vibers'}
         </button>
       </div>
     </div>
