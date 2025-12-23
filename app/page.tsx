@@ -12,10 +12,14 @@ export default function Home() {
 
   const cities = ['Barcelona', 'Madrid', 'Valencia'];
   
+  // Lista de imágenes actualizada con el orden solicitado [2025-12-23]
+  // Mezclamos archivos de /public con URLs externas
   const images = [
-    "https://images.unsplash.com/photo-1514525253361-bee8718a74a7?q=80&w=1920&auto=format&fit=crop",
+    "/hero-1.jpg", // Asegúrate de que la extensión sea .jpg, .png o .webp según tus archivos
     "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1920&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1920&auto=format&fit=crop"
+    "/hero-2.jpg",
+    "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1920&auto=format&fit=crop",
+    "/hero-3.jpg"
   ];
 
   // Mantenemos el ciclo de 5 segundos [2025-12-23]
@@ -50,8 +54,8 @@ export default function Home() {
           <span className="text-black font-black text-2xl">N</span>
         </div>
 
-        {/* NITVIBES Logo - 35% más grande que el original [2025-12-23] */}
-        <div className="absolute left-1/2 -translate-x-1/2 top-7 pointer-events-none">
+        {/* NITVIBES Logo - 35% más grande [2025-12-23] */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-7 pointer-events-none text-center w-full">
           <h1 className="text-5xl font-black italic tracking-tighter text-white drop-shadow-2xl">
             NIT<span className="text-yellow-400">VIBES</span>
           </h1>
@@ -69,7 +73,7 @@ export default function Home() {
           </button>
 
           {isCityOpen && (
-            <div className="absolute right-0 mt-2 w-32 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="absolute right-0 mt-2 w-32 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200 z-50">
               {cities.map((city) => (
                 <button
                   key={city}
@@ -110,7 +114,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer / Navigation Bar Recuperado [2025-12-23] */}
+      {/* Footer / Navigation Bar [2025-12-23] */}
       <Navbar />
 
       {/* Gradiente para asegurar legibilidad sobre el menú */}
