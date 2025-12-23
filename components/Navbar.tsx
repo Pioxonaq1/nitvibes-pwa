@@ -7,16 +7,15 @@ import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, userData } = useAuth();
+  const { user } = useAuth();
 
-  // Determinamos si el usuario tiene un rol B2B (Partner, Gov, Team) [2025-12-19]
-  const isBusinessUser = userData?.role === 'partner' || userData?.role === 'gov' || userData?.role === 'admin' || userData?.role === 'colaborador';
+  // En tu AuthContext, los datos de Rowy están dentro del objeto 'user'
+  const isBusinessUser = user?.role === 'partner' || user?.role === 'gov' || user?.role === 'admin' || user?.role === 'colaborador';
 
   const navItems = [
     { name: 'Inicio', href: '/', icon: Home },
     { name: 'Mapa', href: '/mapa', icon: Map },
     { name: 'Vibes', href: '/vibes', icon: Zap },
-    // Cambio dinámico: Si está logueado como Partner/Gov/Team, se llama "Panel" [2025-12-21]
     { 
       name: isBusinessUser ? 'Panel' : 'Perfil', 
       href: '/perfil', 
