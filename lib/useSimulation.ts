@@ -9,11 +9,11 @@ export function useSimulation(count: number, venues: any[], currentZoom: number)
         const venue = venues[i % venues.length];
         return {
           coords: [
-            venue.lon + (Math.random() - 0.5) * 0.001,
-            venue.lat + (Math.random() - 0.5) * 0.001
+            venue.lon + (Math.random() - 0.5) * 0.005,
+            venue.lat + (Math.random() - 0.5) * 0.005
           ],
           targetVenue: venue,
-          jitter: 0.000025
+          jitter: 0.00002
         };
       });
     }
@@ -22,8 +22,7 @@ export function useSimulation(count: number, venues: any[], currentZoom: number)
   const updatePositions = () => {
     if (users.current.length === 0 || venues.length === 0) return { type: 'FeatureCollection', features: [] };
 
-    // FACTOR DE ESCALA: Reducimos la velocidad drásticamente si el zoom es bajo (lejos) [cite: 2025-12-23]
-    // A zoom 18-20 (1:1) el factor es 1. A zoom 12 el factor es ~0.1
+    // Factor de escala basado en zoom (Referencia 1:1 en zoom 18)
     const zoomFactor = Math.pow(2, currentZoom - 18);
 
     const features = users.current.map((u) => {
@@ -31,21 +30,34 @@ export function useSimulation(count: number, venues: any[], currentZoom: number)
       const dy = u.targetVenue.lat - u.coords[1];
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // Regla de velocidad base: 50km/h (+200m) o a pie (-200m) [cite: 2025-12-23]
-      const isFar = dist > 0.0018; 
-      let baseSpeed = isFar ? 0.00012 : 0.000015;
+      let baseSpeed = 0;
 
-      // Aplicamos el factor de zoom para que el desplazamiento sea relativo al plano [cite: 2025-12-23]
+      // LÓGICA DE RADIOS Y VELOCIDADES (En zoom max)
+      // 1. < 200m (aprox 0.0018 grados): Peatón (4-6 km/h) -> ~0.00001
+      if (dist < 0.0018) {
+        baseSpeed = 0.00001;
+      } 
+      // 2. 200m a 500m (aprox 0.0045 grados): Aproximación (10 km/h) -> ~0.000025
+      else if (dist < 0.0045) {
+        baseSpeed = 0.000025;
+      }
+      // 3. > 500m: Tráfico ciudad (30 km/h) -> ~0.00007
+      else {
+        baseSpeed = 0.00007;
+      }
+
+      // Aplicamos el freno por Zoom Out para que no "vuelen" al alejarse
       const finalSpeed = baseSpeed * zoomFactor;
 
-      if (dist < 0.00012) {
-        // Merodeo en 10m [cite: 2025-12-23]
-        u.coords[0] += (Math.random() - 0.5) * 0.00001 * zoomFactor;
-        u.coords[1] += (Math.random() - 0.5) * 0.00001 * zoomFactor;
-        if (Math.random() > 0.999) u.targetVenue = venues[Math.floor(Math.random() * venues.length)];
-      } 
-      else {
-        const sideNoise = isFar ? 0 : (Math.random() - 0.5) * u.jitter * zoomFactor;
+      // Movimiento con Gravedad hacia la Venue
+      if (dist < 0.0001) {
+        // Merodeo final a 10m
+        u.coords[0] += (Math.random() - 0.5) * 0.000005 * zoomFactor;
+        u.coords[1] += (Math.random() - 0.5) * 0.000005 * zoomFactor;
+        if (Math.random() > 0.998) u.targetVenue = venues[Math.floor(Math.random() * venues.length)];
+      } else {
+        // Atracción gravitatoria + Jitter si es peatón
+        const sideNoise = dist < 0.0018 ? (Math.random() - 0.5) * u.jitter * zoomFactor : 0;
         u.coords[0] += (dx / dist) * finalSpeed + sideNoise;
         u.coords[1] += (dy / dist) * finalSpeed + sideNoise;
       }
@@ -53,7 +65,7 @@ export function useSimulation(count: number, venues: any[], currentZoom: number)
       return {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [u.coords[0], u.coords[1]] },
-        properties: {}
+        properties: { isPedestrian: dist < 0.0018 }
       };
     });
 
