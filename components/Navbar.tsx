@@ -9,7 +9,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const { user } = useAuth();
   
-  // Cast del usuario para acceder al rol según la lógica de partners [cite: 2025-12-19, 2025-12-21]
+  // Cast del usuario para acceder al rol según la lógica de partners
   const userData = user as any; 
 
   const isBusinessUser = userData?.role === 'partner' || userData?.role === 'gov' || userData?.role === 'admin' || userData?.role === 'colaborador';
@@ -27,7 +27,7 @@ export default function Navbar() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col">
-      {/* 1. Navigation Bar (Ahora encima del footer legal) [cite: 2025-12-23] */}
+      {/* 1. Menú de Navegación Principal */}
       <nav className="bg-black/95 backdrop-blur-lg border-t border-white/10">
         <div className="flex justify-around items-center h-16 max-w-md mx-auto">
           {navItems.map((item) => {
@@ -45,8 +45,8 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* 2. Footer Copyright y Dev (Situado al final de todo) [cite: 2025-12-23] */}
-      <div className="bg-black border-t border-white/5 py-2 px-6 pb-safe">
+      {/* 2. Footer Legal por debajo del Menú */}
+      <div className="bg-black py-2 px-6 border-t border-white/5 pb-safe">
         <div className="max-w-md mx-auto flex justify-between items-center text-[7px] text-zinc-600 uppercase font-black tracking-[0.2em]">
           <span>© 2025 NITVIBES</span>
           <a 
