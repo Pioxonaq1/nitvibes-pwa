@@ -96,4 +96,27 @@ body {
 .venue-marker:hover {
   transform: scale(1.2);
 }
+
+/* Asegurar que el contenedor de Mapbox ocupe todo el espacio [cite: 2025-12-23] */
+.mapboxgl-canvas-container,
+.mapboxgl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Evitar que el scroll del body rompa el mapa en móviles */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Evita el rebote elástico en iOS/Mac [cite: 2025-12-17] */
+}
+
+/* Estilo para los marcadores de las Venues [cite: 2025-12-19] */
+.venue-marker {
+  display: block;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
 }

@@ -1,25 +1,19 @@
-"use client";
-
-import React from 'react';
-import MapboxMap from '@/components/MapboxMap';
-
 export default function MapaPage() {
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
-      {/* Header del Mapa */}
-      <div className="p-6 pt-12 text-center bg-gradient-to-b from-black to-transparent z-10">
-        <h1 className="text-2xl font-black italic uppercase tracking-tighter text-green-400">
+    <main className="fixed inset-0 flex flex-col bg-black overflow-hidden">
+      {/* Header flotante para no ocupar espacio real [cite: 2025-12-23] */}
+      <div className="absolute top-10 w-full text-center z-20 pointer-events-none">
+        <h1 className="text-2xl font-black italic uppercase tracking-tighter text-green-400 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
           VIBE <span className="text-white">MAP</span>
         </h1>
       </div>
 
-      {/* Contenedor del Mapa */}
-      <div className="flex-grow relative">
+      {/* Componente de Mapa [cite: 2025-12-18] */}
+      <div className="relative w-full h-full">
         <MapboxMap />
       </div>
-
-      {/* Espacio para que el Navbar no tape el mapa */}
-      <div className="h-24" />
-    </div>
+      
+      {/* El Navbar ya se carga desde el layout.tsx global [cite: 2025-12-21] */}
+    </main>
   );
 }
