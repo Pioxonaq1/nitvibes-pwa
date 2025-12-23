@@ -9,7 +9,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const { user } = useAuth();
   
-  // Cast del usuario para acceder al rol
+  // Cast del usuario para acceder al rol según la lógica de partners [cite: 2025-12-19, 2025-12-21]
   const userData = user as any; 
 
   const isBusinessUser = userData?.role === 'partner' || userData?.role === 'gov' || userData?.role === 'admin' || userData?.role === 'colaborador';
@@ -26,24 +26,9 @@ export default function Navbar() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50">
-      {/* Footer Copyright y Dev con Enlace */}
-      <div className="bg-black/90 backdrop-blur-lg border-t border-white/5 py-1.5 px-4">
-        <div className="max-w-md mx-auto flex justify-between items-center text-[7px] md:text-[8px] text-zinc-600 uppercase font-black tracking-[0.2em]">
-          <span>© 2025 NITVIBES</span>
-          <a 
-            href="https://konnektwerk.com/" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="hover:text-yellow-400 transition-colors"
-          >
-            DEV BY KONNEKTWERK
-          </a>
-        </div>
-      </div>
-
-      {/* Navigation Bar */}
-      <nav className="bg-black/95 backdrop-blur-lg border-t border-white/10 pb-safe">
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col">
+      {/* 1. Navigation Bar (Ahora encima del footer legal) [cite: 2025-12-23] */}
+      <nav className="bg-black/95 backdrop-blur-lg border-t border-white/10">
         <div className="flex justify-around items-center h-16 max-w-md mx-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -59,6 +44,21 @@ export default function Navbar() {
           })}
         </div>
       </nav>
+
+      {/* 2. Footer Copyright y Dev (Situado al final de todo) [cite: 2025-12-23] */}
+      <div className="bg-black border-t border-white/5 py-2 px-6 pb-safe">
+        <div className="max-w-md mx-auto flex justify-between items-center text-[7px] text-zinc-600 uppercase font-black tracking-[0.2em]">
+          <span>© 2025 NITVIBES</span>
+          <a 
+            href="https://konnektwerk.com/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="hover:text-yellow-400 transition-colors"
+          >
+            DEV BY KONNEKTWERK
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
