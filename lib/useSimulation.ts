@@ -1,22 +1,16 @@
 import { useRef, useEffect } from 'react';
 
-export function useSimulation(count: number, venues: any[]) {
+export function useSimulation(count: number, venues: any[], currentZoom: number) {
   const users = useRef<any[]>([]);
 
   useEffect(() => {
     if (venues.length > 0 && users.current.length === 0) {
       users.current = Array.from({ length: count }).map((_, i) => {
         const venue = venues[i % venues.length];
-        const rand = Math.random();
-        
-        // Distribución inicial: algunos ya en la zona, otros viniendo de lejos [cite: 2025-12-23]
-        let offset = 0.0001; // ~10m
-        if (rand > 0.5) offset = 0.005; // ~500m (viniendo en coche/bus) [cite: 2025-12-23]
-
         return {
           coords: [
-            venue.lon + (Math.random() - 0.5) * offset,
-            venue.lat + (Math.random() - 0.5) * offset
+            venue.lon + (Math.random() - 0.5) * 0.001,
+            venue.lat + (Math.random() - 0.5) * 0.001
           ],
           targetVenue: venue,
           jitter: 0.000025
@@ -28,35 +22,38 @@ export function useSimulation(count: number, venues: any[]) {
   const updatePositions = () => {
     if (users.current.length === 0 || venues.length === 0) return { type: 'FeatureCollection', features: [] };
 
+    // FACTOR DE ESCALA: Reducimos la velocidad drásticamente si el zoom es bajo (lejos) [cite: 2025-12-23]
+    // A zoom 18-20 (1:1) el factor es 1. A zoom 12 el factor es ~0.1
+    const zoomFactor = Math.pow(2, currentZoom - 18);
+
     const features = users.current.map((u) => {
       const dx = u.targetVenue.lon - u.coords[0];
       const dy = u.targetVenue.lat - u.coords[1];
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // DEFINICIÓN DE VELOCIDADES [cite: 2025-12-23]
-      // 200 metros en grados es aprox 0.0018
+      // Regla de velocidad base: 50km/h (+200m) o a pie (-200m) [cite: 2025-12-23]
       const isFar = dist > 0.0018; 
-      
-      // Velocidad: 50km/h si está lejos, a pie si está cerca [cite: 2025-12-23]
-      const currentSpeed = isFar ? 0.00012 : 0.000015;
+      let baseSpeed = isFar ? 0.00012 : 0.000015;
+
+      // Aplicamos el factor de zoom para que el desplazamiento sea relativo al plano [cite: 2025-12-23]
+      const finalSpeed = baseSpeed * zoomFactor;
 
       if (dist < 0.00012) {
-        // Radio 10m: Merodeo (Velocidad mínima) [cite: 2025-12-23]
-        u.coords[0] += (Math.random() - 0.5) * 0.000015;
-        u.coords[1] += (Math.random() - 0.5) * 0.000015;
+        // Merodeo en 10m [cite: 2025-12-23]
+        u.coords[0] += (Math.random() - 0.5) * 0.00001 * zoomFactor;
+        u.coords[1] += (Math.random() - 0.5) * 0.00001 * zoomFactor;
         if (Math.random() > 0.999) u.targetVenue = venues[Math.floor(Math.random() * venues.length)];
       } 
       else {
-        // Tránsito: Motorizado o Peatonal según distancia [cite: 2025-12-23]
-        const sideNoise = isFar ? 0 : (Math.random() - 0.5) * u.jitter; // Sin jitter si va rápido
-        u.coords[0] += (dx / dist) * currentSpeed + sideNoise;
-        u.coords[1] += (dy / dist) * currentSpeed + sideNoise;
+        const sideNoise = isFar ? 0 : (Math.random() - 0.5) * u.jitter * zoomFactor;
+        u.coords[0] += (dx / dist) * finalSpeed + sideNoise;
+        u.coords[1] += (dy / dist) * finalSpeed + sideNoise;
       }
 
       return {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [u.coords[0], u.coords[1]] },
-        properties: { fast: isFar }
+        properties: {}
       };
     });
 
