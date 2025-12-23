@@ -1,198 +1,116 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ExternalLink, RefreshCw, Database } from 'lucide-react'; 
 import { useAuth } from '@/context/AuthContext';
-import { ROUTES } from '@/lib/constants';
+import { useRouter } from 'next/navigation';
+import { 
+  Users, 
+  Building2, 
+  ShieldAlert, 
+  Zap, 
+  TrendingUp, 
+  Settings,
+  PlusCircle,
+  Search,
+  LogOut
+} from 'lucide-react';
+import { useEffect } from 'react';
 
-export default function AdminDashboard() {
-  const router = useRouter();
+export default function AdminPage() {
   const { user, logout } = useAuth();
-  
-  // Estado local para simular la interactividad del "Cerebro"
-  const [brainActive, setBrainActive] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const router = useRouter();
 
-  // Lógica de Salida
-  const handleLogout = async () => {
-    await logout();
-    router.push(ROUTES.HOME);
-  };
+  useEffect(() => {
+    // Bloqueo estricto para no administradores
+    if (user && user.role !== 'admin') {
+      router.push('/perfil');
+    }
+  }, [user, router]);
 
-  // Simulación de sincronización
-  const handleForceSync = () => {
-    setSyncing(true);
-    setTimeout(() => setSyncing(false), 2000);
-  };
+  const dashboardStats = [
+    { label: 'Partners', value: '124', icon: Building2, color: 'text-yellow-400' },
+    { label: 'Vibers', value: '8.2k', icon: Users, color: 'text-blue-400' },
+    { label: 'Promos Live', value: '42', icon: Zap, color: 'text-purple-400' },
+    { label: 'Alertas', value: '0', icon: ShieldAlert, color: 'text-zinc-500' },
+  ];
 
   return (
-    <div className="min-h-screen bg-black text-white pb-24 p-6 font-sans">
-      
-      {/* --- HEADER SUPERIOR --- */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 pb-6 border-b border-white/10 gap-4">
-        <div>
-            <h1 className="text-3xl font-bold tracking-tighter flex items-center gap-2">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 italic">NITVIBES</span> 
-              <span>COMMAND</span>
-            </h1>
-            <p className="text-zinc-500 text-sm mt-1">Panel de Control Central & Operaciones</p>
+    <div className="min-h-screen bg-black text-white">
+      {/* Admin Nav */}
+      <nav className="p-6 flex justify-between items-center border-b border-white/10 bg-zinc-900/50 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-black font-black">
+            {(user?.nombre || user?.email || 'AD').substring(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm leading-none uppercase">
+                {user?.nombre || 'Administrador'}
+            </p>
+            <p className="text-zinc-500 text-[10px]">{user?.email}</p>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-6 bg-zinc-900/50 p-2 pr-4 rounded-full border border-white/5">
-            {/* Badge de Usuario */}
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-pink-600 to-purple-700 rounded-full flex items-center justify-center font-bold text-xs shadow-lg shadow-purple-900/20">
-                    {/* 👇 CORRECCIÓN APLICADA AQUÍ: Lógica segura para iniciales */}
-                    {(user?.displayName || user?.email || 'AD').substring(0, 2).toUpperCase()}
-                </div>
-                <div className="hidden sm:block">
-                    <p className="text-[10px] font-bold text-white uppercase tracking-wider">{user?.email || 'CONTACT@KONNEKTWERK.COM'}</p>
-                    <p className="text-[9px] text-pink-500 font-mono flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-pulse"></span>
-                        MASTER ADMIN
-                    </p>
-                </div>
-            </div>
+        <button onClick={() => logout()} className="p-2 text-zinc-500 hover:text-red-500 transition-colors">
+          <LogOut size={20} />
+        </button>
+      </nav>
 
-            <div className="h-8 w-px bg-white/10"></div>
-            
-            <Link href="/" target="_blank" className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 transition-colors">
-                WEB <ExternalLink size={10} />
-            </Link>
+      <main className="p-6 space-y-8">
+        {/* Header Section */}
+        <section>
+          <h1 className="text-4xl font-black italic uppercase tracking-tighter leading-none">Cerebro Semanal</h1>
+          <p className="text-zinc-500 text-xs mt-2 font-bold uppercase tracking-widest">Global Control Panel</p>
+        </section>
 
-            {/* BOTÓN SALIR */}
-            <button 
-                onClick={handleLogout}
-                className="bg-red-500/10 border border-red-500/20 text-red-500 px-5 py-2 rounded-full text-[10px] font-bold hover:bg-red-600 hover:text-white transition-all tracking-wider"
-            >
-                SALIR
+        {/* Stats Grid */}
+        <section className="grid grid-cols-2 gap-4">
+          {dashboardStats.map((stat, i) => {
+            const Icon = stat.icon;
+            return (
+              <div key={i} className="bg-zinc-900 border border-white/5 p-5 rounded-[2rem]">
+                <Icon size={20} className={`${stat.color} mb-3`} />
+                <p className="text-[10px] font-black text-zinc-500 uppercase tracking-tighter">{stat.label}</p>
+                <p className="text-2xl font-black italic">{stat.value}</p>
+              </div>
+            );
+          })}
+        </section>
+
+        {/* Quick Actions */}
+        <section className="space-y-4">
+          <h2 className="font-black italic uppercase text-sm tracking-widest text-zinc-500">Acciones Rápidas</h2>
+          <div className="grid grid-cols-1 gap-3">
+            <button className="w-full bg-white text-black p-4 rounded-2xl flex items-center justify-between font-black uppercase text-xs">
+              <span className="flex items-center gap-3"><PlusCircle size={18}/> Alta de Nuevo Partner</span>
+              <TrendingUp size={18} />
             </button>
-        </div>
-      </header>
+            <button className="w-full bg-zinc-900 border border-white/10 text-white p-4 rounded-2xl flex items-center justify-between font-black uppercase text-xs">
+              <span className="flex items-center gap-3"><Settings size={18}/> Configuración Global</span>
+              <PlusCircle size={18} className="rotate-45 opacity-0" />
+            </button>
+          </div>
+        </section>
 
-
-      {/* --- GRID PRINCIPAL --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-        
-        {/* 1. WIDGET CEREBRO SEMANAL (Ocupa 2 columnas en desktop) */}
-        <div className="lg:col-span-2 bg-[#0A0A0A] border border-white/10 rounded-3xl p-1 overflow-hidden shadow-2xl shadow-purple-900/5">
-            <div className="bg-zinc-900/30 rounded-[20px] p-6 h-full flex flex-col justify-between relative group">
-                
-                {/* Glow effect */}
-                <div className={`absolute top-0 right-0 p-32 bg-purple-600/5 blur-[100px] rounded-full transition-opacity duration-1000 ${brainActive ? 'opacity-100' : 'opacity-20'}`}></div>
-
-                {/* Header Widget */}
-                <div className="flex justify-between items-start mb-8 relative z-10">
-                    <div>
-                        <h3 className="text-xl font-bold flex items-center gap-3">
-                            🧠 Cerebro Semanal
-                        </h3>
-                        <p className="text-zinc-500 text-xs mt-1">Gestión Inteligente de Horarios & Aforos</p>
-                    </div>
-                    <div className={`px-3 py-1 rounded-full text-[10px] font-bold border flex items-center gap-2 transition-all ${
-                        brainActive 
-                        ? 'bg-green-500/10 border-green-500/20 text-green-400' 
-                        : 'bg-zinc-800 border-zinc-700 text-zinc-500'
-                    }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${brainActive ? 'bg-green-400 animate-pulse' : 'bg-zinc-500'}`}></div>
-                        {brainActive ? 'OPERATIVO' : 'APAGADO'}
-                    </div>
+        {/* Recents Table Placeholder */}
+        <section className="bg-zinc-900 border border-white/5 rounded-[2.5rem] p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="font-black italic uppercase text-lg">Últimas Altas</h2>
+            <Search size={20} className="text-zinc-500" />
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex justify-between items-center border-b border-white/5 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-800" />
+                  <div>
+                    <p className="font-bold text-sm">Venue ID: #440{i}</p>
+                    <p className="text-[10px] text-zinc-500 uppercase">Barcelona • Hace 2h</p>
+                  </div>
                 </div>
-
-                {/* Data Display */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 relative z-10">
-                    <div className="bg-black/40 p-4 rounded-xl border border-white/5">
-                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Último Ciclo</p>
-                        <p className="text-2xl font-mono text-white tracking-widest">
-                            {brainActive ? '14:30:05' : '--:--:--'}
-                        </p>
-                    </div>
-                    <div className="bg-black/40 p-4 rounded-xl border border-white/5">
-                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Estado</p>
-                        <p className={`text-sm font-medium ${brainActive ? 'text-blue-400' : 'text-zinc-600'}`}>
-                            {syncing ? 'Sincronizando...' : (brainActive ? 'Análisis en tiempo real activo.' : 'Sistema en espera.')}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Footer Controles */}
-                <div className="bg-zinc-950/50 -m-6 mt-0 p-6 border-t border-white/5 flex items-center justify-between">
-                    
-                    {/* Toggle Switch */}
-                    <div className="flex items-center gap-3">
-                        <button 
-                            onClick={() => setBrainActive(!brainActive)}
-                            className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 relative ${brainActive ? 'bg-purple-600' : 'bg-zinc-700'}`}
-                        >
-                            <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${brainActive ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                        </button>
-                        <span className="text-xs font-medium text-zinc-400">Activar Piloto Automático</span>
-                    </div>
-
-                    {/* Botón Sync */}
-                    <button 
-                        onClick={handleForceSync}
-                        disabled={!brainActive || syncing}
-                        className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all flex items-center gap-2 ${
-                            brainActive 
-                            ? 'bg-white text-black hover:bg-zinc-200 border-white' 
-                            : 'bg-transparent text-zinc-600 border-zinc-800 cursor-not-allowed'
-                        }`}
-                    >
-                        <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-                        {syncing ? 'Sync...' : 'Forzar Sync'}
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        {/* COLUMNA DERECHA */}
-        <div className="flex flex-col gap-6">
-            
-            {/* 2. WIDGET SANITY STUDIO (Conexión real) */}
-            <div className="bg-zinc-900/30 border border-orange-500/20 rounded-3xl p-6 relative overflow-hidden">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500 border border-orange-500/20">
-                        ✏️
-                    </div>
-                    <span className="text-[10px] bg-orange-950 text-orange-400 px-2 py-1 rounded border border-orange-500/20">CMS</span>
-                </div>
-                
-                <h3 className="text-lg font-bold mb-2 text-white">Sanity Studio</h3>
-                <p className="text-zinc-500 text-xs mb-6 leading-relaxed">
-                    Gestor de contenido. Sube Vibes, gestiona venues y configura la app desde aquí.
-                </p>
-                
-                {/* ENLACE A /STUDIO */}
-                <Link href="/studio" passHref>
-                    <button className="w-full bg-gradient-to-r from-orange-600 to-red-600 py-3 rounded-xl font-bold text-xs shadow-lg shadow-orange-900/20 hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 text-white">
-                        ABRIR EDITOR <ExternalLink size={12} />
-                    </button>
-                </Link>
-            </div>
-
-            {/* 3. WIDGET ESTADO DEL SISTEMA */}
-            <div className="bg-zinc-900/30 border border-white/5 rounded-3xl p-6 flex-grow flex flex-col justify-center gap-4">
-                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2">Estado del Sistema</p>
-                
-                <div className="flex justify-between items-center bg-black/40 p-3 rounded-lg border border-white/5">
-                    <span className="text-xs text-zinc-400">Role Actual</span>
-                    <span className="text-[10px] bg-red-900/30 text-red-400 px-2 py-1 rounded border border-red-500/20">ADMIN</span>
-                </div>
-
-                <div className="flex justify-between items-center bg-black/40 p-3 rounded-lg border border-white/5">
-                    <span className="text-xs text-zinc-400 flex items-center gap-2">
-                        <Database size={12} /> Base de Datos
-                    </span>
-                    <div className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]"></div>
-                </div>
-            </div>
-
-        </div>
-
-      </div>
+                <div className="bg-green-500/10 text-green-500 text-[10px] font-black px-3 py-1 rounded-full uppercase">Activo</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

@@ -1,91 +1,81 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Building2, Loader2 } from 'lucide-react';
+import { auth } from '@/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { Landmark } from 'lucide-react';
 
-export default function GovLogin() {
+export default function GovLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setError('');
 
     try {
-      // Login híbrido (email + contraseña)
-      await login(email, password);
-      router.push('/gov/dashboard'); 
+      // Usamos Firebase directamente para evitar errores de tipos [cite: 2025-12-19]
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/perfil'); // Redirige al perfil/selector de panel [cite: 2025-12-21]
     } catch (err: any) {
-      console.error(err);
-      setError('Credenciales inválidas. Verifica tu acceso gubernamental.');
+      setError('Credenciales de acceso gubernamental incorrectas');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8 bg-zinc-900 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-green-900/20 rounded-full flex items-center justify-center mb-4 border border-green-900/30">
-            <Building2 className="h-8 w-8 text-green-500" />
-          </div>
-          <h2 className="text-3xl font-black text-white tracking-tighter">
-            NITVIBES <span className="text-green-600">GOV</span>
-          </h2>
-          <p className="mt-2 text-sm text-gray-400">Acceso Institucional y Seguridad</p>
+            <Landmark size={48} className="text-blue-400 mx-auto mb-4" />
+            <h1 className="text-3xl font-black text-white italic uppercase tracking-tighter">Gov Login</h1>
+            <p className="text-zinc-500 text-xs font-bold uppercase mt-2 tracking-widest">Acceso Institucional</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <Input
-                type="email"
-                placeholder="Email Institucional"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 py-6"
-              />
+        {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl text-xs font-bold uppercase text-center">
+                {error}
             </div>
-            <div>
-              <Input
-                type="password"
-                placeholder="Código de Acceso"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 py-6"
-              />
-            </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-zinc-500 uppercase ml-4">Email Oficial</label>
+            <input 
+              type="email" 
+              placeholder="institucion@gob.es" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              className="w-full bg-black border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-blue-400 transition-colors" 
+              required 
+            />
           </div>
 
-          {error && (
-            <div className="p-3 rounded-lg bg-red-900/20 border border-red-900/50">
-                <p className="text-red-400 text-sm text-center font-medium">{error}</p>
-            </div>
-          )}
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-zinc-500 uppercase ml-4">Contraseña</label>
+            <input 
+              type="password" 
+              placeholder="••••••••" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              className="w-full bg-black border border-white/10 p-4 rounded-2xl text-white outline-none focus:border-blue-400 transition-colors" 
+              required 
+            />
+          </div>
 
-          <Button 
+          <button 
             type="submit" 
-            className="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-6 rounded-xl transition-all"
             disabled={loading}
+            className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest hover:bg-blue-500 transition-transform active:scale-95 disabled:opacity-50"
           >
-            {loading ? (
-                <span className="flex items-center gap-2">
-                    <Loader2 className="animate-spin" /> Verificando...
-                </span>
-            ) : "ACCEDER AL PANEL"}
-          </Button>
+            {loading ? 'Verificando...' : 'Acceder al Sistema'}
+          </button>
         </form>
       </div>
     </div>

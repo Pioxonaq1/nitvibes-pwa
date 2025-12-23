@@ -1,56 +1,118 @@
 "use client";
 
-import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { ROUTES } from '@/lib/constants';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { Building2, LogOut, MapPin, FileText, UserCircle, ShieldCheck } from 'lucide-react';
+import { 
+  BarChart3, 
+  Users, 
+  MapPin, 
+  ShieldCheck, 
+  Bell, 
+  Search,
+  ChevronRight,
+  Filter,
+  Download
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export default function GovDashboard() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [govProfile, setGovProfile] = useState<any>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
 
+  // Redirigir si no es un usuario Gov o Admin
   useEffect(() => {
-    const fetchGovProfile = async () => {
-      if (user?.email) {
-        try {
-          // CORRECCIÓN CLAVE: "Gov Users" con espacio, tal cual sale en Rowy
-          const q = query(collection(db, "Gov Users"), where("email", "==", user.email));
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) setGovProfile(querySnapshot.docs[0].data());
-        } catch (error) { console.error(error); } 
-        finally { setLoadingProfile(false); }
-      }
-    };
-    fetchGovProfile();
-  }, [user]);
+    if (user && user.role !== 'gov' && user.role !== 'admin') {
+      router.push('/perfil');
+    }
+  }, [user, router]);
 
-  const handleLogout = async () => { await logout(); router.push(ROUTES.HOME); };
+  const stats = [
+    { label: 'Afluencia Total', value: '12.4k', change: '+12%', icon: Users },
+    { label: 'Zonas Activas', value: '8', change: 'Estable', icon: MapPin },
+    { label: 'Alertas Ruido', value: '3', change: '-5%', icon: Bell },
+    { label: 'Seguridad', value: 'Óptimo', change: '100%', icon: ShieldCheck },
+  ];
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 pb-24">
-      <header className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
-        <div className="flex items-center gap-3">
-            <div className="bg-green-900/20 p-3 rounded-full border border-green-900/30"><Building2 className="text-green-500" size={24} /></div>
-            <div>
-                <h1 className="text-2xl font-black tracking-tighter">GOV <span className="text-green-600">PANEL</span></h1>
-                <p className="text-xs text-gray-400 font-medium">{govProfile?.department || 'Gestión Municipal'}</p>
+    <div className="min-h-screen bg-black text-white pb-20">
+      {/* Header Gov */}
+      <header className="p-6 pt-12 border-b border-white/10 bg-zinc-900/50 backdrop-blur-md sticky top-0 z-40">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-black italic uppercase tracking-tighter">Panel de Gestión Pública</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <p className="text-[11px] font-bold uppercase text-blue-500 tracking-widest">
+                {govProfile?.nombre || user?.nombre || 'GESTOR GOV'}
+              </p>
             </div>
+          </div>
+          <button onClick={() => logout()} className="p-2 bg-white/5 rounded-full border border-white/10">
+            <ShieldCheck size={20} className="text-zinc-400" />
+          </button>
         </div>
-        <div className="text-right hidden sm:block">
-            <p className="text-[11px] font-bold uppercase">{govProfile?.nombre || user?.displayName}</p>
-            <p className="text-[9px] text-green-400 uppercase bg-green-900/20 px-2 py-0.5 rounded inline-block">{govProfile?.cargo || 'Oficial'}</p>
-        </div>
-        <button onClick={handleLogout} className="text-red-500 ml-4"><LogOut size={18} /></button>
       </header>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-[#111] p-6 rounded-2xl border border-gray-800"><h3 className="font-bold flex gap-2"><MapPin className="text-green-500"/> Monitorización</h3><p className="text-xs text-gray-500">Mapas de calor en tiempo real.</p></div>
-          <div className="bg-[#111] p-6 rounded-2xl border border-gray-800"><h3 className="font-bold flex gap-2"><FileText className="text-green-500"/> Licencias</h3><p className="text-xs text-gray-500">Gestión administrativa.</p></div>
-      </div>
+
+      <main className="p-4 space-y-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-4">
+          {stats.map((stat, i) => {
+            const Icon = stat.icon;
+            return (
+              <div key={i} className="bg-zinc-900 border border-white/5 p-4 rounded-3xl">
+                <Icon size={18} className="text-blue-400 mb-2" />
+                <p className="text-zinc-500 text-[10px] font-bold uppercase">{stat.label}</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xl font-black italic">{stat.value}</span>
+                  <span className="text-[10px] text-blue-400 font-bold">{stat.change}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Mapa de Calor / Control de Zonas */}
+        <div className="bg-zinc-900 border border-white/5 p-6 rounded-[2.5rem] relative overflow-hidden h-64">
+          <div className="absolute inset-0 bg-blue-500/5 flex items-center justify-center">
+            <MapPin size={40} className="text-blue-500/20" />
+          </div>
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            <div>
+              <h3 className="font-black italic uppercase text-lg">Mapa de Actividad</h3>
+              <p className="text-zinc-500 text-xs">Monitoreo en tiempo real - Barcelona</p>
+            </div>
+            <button className="w-fit bg-white text-black text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-tighter">
+              Ver Mapa Completo
+            </button>
+          </div>
+        </div>
+
+        {/* Alertas y Acciones */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-end px-2">
+            <h3 className="font-black italic uppercase text-sm">Reportes Recientes</h3>
+            <button className="text-blue-400 text-[10px] font-bold uppercase">Ver todo</button>
+          </div>
+          
+          <div className="space-y-2">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="bg-zinc-900 border border-white/5 p-4 rounded-3xl flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center">
+                    <BarChart3 size={20} className="text-zinc-500" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm">Control de Aforo {item}</p>
+                    <p className="text-[10px] text-zinc-500 uppercase">Ciutat Vella • 12:40 PM</p>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-zinc-600" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

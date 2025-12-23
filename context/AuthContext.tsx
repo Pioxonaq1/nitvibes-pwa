@@ -1,11 +1,17 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  User as FirebaseUser, 
+  signOut, 
+  GoogleAuthProvider, 
+  signInWithPopup 
+} from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
-// Definimos la interfaz exacta de lo que hay en Firebase [cite: 2025-12-19]
+// 1. Definimos la estructura real de Nitvibes [2025-12-19]
 interface NitvibesUser {
   uid: string;
   email: string | null;
@@ -13,10 +19,12 @@ interface NitvibesUser {
   nombre?: string;
 }
 
+// 2. Definimos qué funciones exporta nuestro contexto
 interface AuthContextType {
   user: NitvibesUser | null;
   loading: boolean;
   logout: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,18 +33,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<NitvibesUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Función para Login con Google (Requerida en app/login/page.tsx) [2025-12-19]
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Error en Google Login:", error);
+      throw error;
+    }
+  };
+
+  const logout = () => signOut(auth);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Leemos la "tabla" real del usuario en Firestore [cite: 2025-12-19]
+        // Leemos la tabla real de usuarios en Firestore para obtener el ROL y NOMBRE [2025-12-19]
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
         const data = userDoc.data();
 
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          role: data?.role || 'free', // Si no tiene rol, es free por defecto
-          nombre: data?.nombre || '',
+          role: data?.role || 'free', // Por defecto es free si no hay registro
+          nombre: data?.nombre || firebaseUser.displayName || 'VIBER',
         });
       } else {
         setUser(null);
@@ -47,10 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const logout = () => auth.signOut();
-
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, logout, loginWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );
@@ -58,6 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return context;
 };
