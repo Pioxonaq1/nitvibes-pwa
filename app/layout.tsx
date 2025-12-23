@@ -1,23 +1,14 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { LanguageProvider } from "@/context/LanguageContext";
 import { AuthProvider } from "@/context/AuthContext";
-import BottomMenu from "@/components/BottomMenu"; // Usamos el BUENO
+import Navbar from "@/components/Navbar";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Nitvibes",
-  description: "Descubre el vibe de tu ciudad",
-  manifest: "/manifest.json",
-};
-
-export const viewport: Viewport = {
-  themeColor: "#000000",
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
+  title: "NITVIBES | Tu noche comienza aquí",
+  description: "Descubre los mejores bares, clubes y eventos en tiempo real.",
 };
 
 export default function RootLayout({
@@ -27,15 +18,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${inter.className} bg-black text-white antialiased`}>
+      <body className={`${inter.className} bg-black text-white`}>
         <AuthProvider>
-          <LanguageProvider>
-            <div className="flex flex-col min-h-screen pb-16">
-              {children}
-            </div>
-            {/* El menú de navegación inteligente */}
-            <BottomMenu />
-          </LanguageProvider>
+          {children}
+          {/* El Navbar se renderiza aquí para todas las páginas [cite: 2025-12-23] */}
+          <Navbar />
         </AuthProvider>
       </body>
     </html>

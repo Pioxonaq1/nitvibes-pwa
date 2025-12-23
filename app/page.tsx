@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { MapPin, Zap, ChevronDown } from 'lucide-react';
-import Navbar from '@/components/Navbar';
 
 export default function Home() {
   const [currentImage, setCurrentImage] = useState(0);
@@ -49,15 +48,13 @@ export default function Home() {
         />
       ))}
 
-      {/* Header Optimizado para Móvil [cite: 2025-12-23] */}
+      {/* Header Optimizado [cite: 2025-12-23] */}
       <header className="relative z-20 w-full p-4 flex flex-col items-center bg-gradient-to-b from-black/90 to-transparent">
         <div className="w-full flex justify-between items-start max-w-5xl mx-auto">
-          {/* Logo N */}
           <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-400/20 shrink-0">
             <span className="text-black font-black text-2xl">N</span>
           </div>
 
-          {/* Selector de Ciudad (Sin solapar el logo central) [cite: 2025-12-23] */}
           <div className="relative">
             <button 
               onClick={() => setIsCityOpen(!isCityOpen)}
@@ -91,7 +88,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* NITVIBES Logo Centrado - Reposicionado para evitar solape [cite: 2025-12-23] */}
         <div className="mt-4 md:mt-2 text-center select-none pointer-events-none">
           <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-white drop-shadow-2xl">
             NIT<span className="text-yellow-400">VIBES</span>
@@ -119,9 +115,6 @@ export default function Home() {
         </div>
       </div>
 
-      <Navbar />
-
-      {/* Gradiente inferior para legibilidad */}
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent z-0 pointer-events-none" />
     </main>
   );
