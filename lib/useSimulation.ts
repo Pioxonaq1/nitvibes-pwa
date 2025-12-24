@@ -12,7 +12,8 @@ export type SimulatedUser = {
   state: 'TRANSIT_METRO' | 'WALKING_TO_VENUE' | 'PARTYING' | 'RETURNING_METRO';
   targetVenueLoc: { lat: number, lng: number } | null;
   targetMetroLoc: { lat: number, lng: number } | null;
-  speed: number;
+  speed: number;        // Velocidad actual base
+  speedFactor: number;  // FACTOR INDIVIDUAL (0.5 a 1.5)
   boredomTimer: number;
   heatWeight: number; 
 };
@@ -28,11 +29,11 @@ const REAL_CYCLE_MINUTES = 3;
 const SIM_START_HOUR = 18; 
 const SIM_END_HOUR = 30; // 06:00 AM
 
-// COLORES (ACTUALIZADO: TODO CYAN)
+// COLORES
 const COL_CYAN = "#00FFFF"; 
 
-// Velocidades
-const SPEED_WALK = 65; 
+// Velocidad Base (km/h visuales)
+const BASE_SPEED_WALK = 60; 
 const SPEED_STATIONARY = 0.5; 
 
 // --- HELPERS ---
@@ -42,7 +43,8 @@ const getDist = (p1: number[], p2: number[]): number => {
 
 const getRandomTargetAround = (lat: number, lng: number, radiusMeters: number) => {
   const randomBear = Math.random() * 360;
-  const randomDist = Math.random() * (radiusMeters / 1000); 
+  // Usamos raíz cuadrada para distribución uniforme en el círculo
+  const randomDist = Math.sqrt(Math.random()) * (radiusMeters / 1000); 
   const dest = turf.destination([lng, lat], randomDist, randomBear);
   return { lat: dest.geometry.coordinates[1], lng: dest.geometry.coordinates[0] };
 };
@@ -63,24 +65,27 @@ export const useSimulation = (venues: Venue[], userCount: number) => {
   const initialized = useRef<boolean>(false);
   const startTimeRef = useRef<number>(Date.now());
 
-  // REINICIAR
+  // REINICIAR (Inicialización dispersa)
   useEffect(() => {
     if (venues.length === 0) return;
 
     const newUsers: SimulatedUser[] = Array.from({ length: userCount }).map((_, i) => {
       const station = METRO_STATIONS[Math.floor(Math.random() * METRO_STATIONS.length)];
-      const spawn = getRandomTargetAround(station.lat, station.lng, 80); 
+      // SPAWN MUY DISPERSO (150m alrededor del metro)
+      const spawn = getRandomTargetAround(station.lat, station.lng, 150); 
       
       return {
         id: i,
         lat: spawn.lat,
         lng: spawn.lng,
-        color: COL_CYAN, // SIEMPRE CYAN
+        color: COL_CYAN,
         state: 'TRANSIT_METRO',
         targetVenueLoc: null,
         targetMetroLoc: { lat: station.lat, lng: station.lng },
-        speed: SPEED_WALK,
-        boredomTimer: Math.random() * 50,
+        speed: BASE_SPEED_WALK,
+        // CADA UNO TIENE SU PROPIO RITMO (Factor 0.6 a 1.4)
+        speedFactor: 0.6 + Math.random() * 0.8, 
+        boredomTimer: Math.random() * 100, // Desfase inicial de aburrimiento
         heatWeight: 0 
       };
     });
@@ -89,7 +94,7 @@ export const useSimulation = (venues: Venue[], userCount: number) => {
     initialized.current = true;
   }, [venues, userCount]); 
 
-  // BUCLE
+  // BUCLE LÓGICO
   useEffect(() => {
     if (venues.length === 0) return;
 
@@ -108,70 +113,84 @@ export const useSimulation = (venues: Venue[], userCount: number) => {
         venues.forEach(v => newCounts[v.id] = 0);
 
         const nextUsers = prevUsers.map((u: SimulatedUser) => {
-          let { state, lat, lng, targetVenueLoc, speed, boredomTimer, heatWeight } = u;
+          let { state, lat, lng, targetVenueLoc, speed, speedFactor, boredomTimer, heatWeight } = u;
           
-          // HEATMAP VISIBILITY
+          // --- HEATMAP ---
           let isNearAnyVenue = false;
-          if (state !== 'TRANSIT_METRO' && targetVenueLoc) {
+          if (targetVenueLoc) {
              const dist = getDist([lng, lat], [targetVenueLoc.lng, targetVenueLoc.lat]);
-             if (dist < 200) isNearAnyVenue = true;
+             if (dist < 180) isNearAnyVenue = true;
           }
           heatWeight = isNearAnyVenue ? 1 : 0; 
 
-          // STATES
+          // --- ESTADOS ---
+
+          // 1. SALIDA DE METRO (Goteo constante pero aleatorio)
           if (state === 'TRANSIT_METRO') {
-             if (!phase3_Exodus && Math.random() > 0.02) { 
+             // Reducimos probabilidad para que no salgan todos de golpe (Efecto Manguera)
+             if (!phase3_Exodus && Math.random() > 0.01) { 
                let targetVenue = venues[Math.floor(Math.random() * venues.length)];
                if (targetVenue && targetVenue.location) {
                  const loc = targetVenue.location;
-                 const noisyTarget = getRandomTargetAround(loc._lat, loc._long, 60);
+                 // TARGET AMPLIO (120m radio) - No van a la puerta, van a la zona
+                 const noisyTarget = getRandomTargetAround(loc._lat, loc._long, 120);
                  targetVenueLoc = { lat: noisyTarget.lat, lng: noisyTarget.lng };
                  state = 'WALKING_TO_VENUE';
                }
              }
           }
 
+          // 2. CAMINANDO
           if (state === 'WALKING_TO_VENUE' && targetVenueLoc) {
+            // Aplicamos velocidad personalizada
+            speed = BASE_SPEED_WALK * speedFactor;
+            
             const dist = getDist([lng, lat], [targetVenueLoc.lng, targetVenueLoc.lat]);
-            if (dist < 20) { 
+            if (dist < 25) { 
               state = 'PARTYING';
               boredomTimer = 0; 
             }
           }
 
+          // 3. FIESTA
           if (state === 'PARTYING') {
-            speed = SPEED_STATIONARY;
+            speed = SPEED_STATIONARY; // Aquí todos quietos (o vibrando lento)
             boredomTimer += 1;
 
             if (phase3_Exodus) {
-               if (Math.random() > 0.92) state = 'RETURNING_METRO';
+               if (Math.random() > 0.95) state = 'RETURNING_METRO';
             }
-            else if (boredomTimer > 40 && Math.random() > 0.96) {
+            // Bar Hopping más orgánico
+            else if (boredomTimer > 60 && Math.random() > 0.97) {
                const nextVenue = venues[Math.floor(Math.random() * venues.length)];
                if (nextVenue && nextVenue.location) {
                   const loc = nextVenue.location;
-                  const noisyTarget = getRandomTargetAround(loc._lat, loc._long, 60);
+                  const noisyTarget = getRandomTargetAround(loc._lat, loc._long, 120);
                   targetVenueLoc = { lat: noisyTarget.lat, lng: noisyTarget.lng };
                   state = 'WALKING_TO_VENUE';
                }
             }
           }
 
+          // 4. RETORNO
           if (state === 'RETURNING_METRO' && u.targetMetroLoc) {
              targetVenueLoc = u.targetMetroLoc;
-             speed = SPEED_WALK;
+             speed = BASE_SPEED_WALK * speedFactor; // Usan su velocidad personal
              const dist = getDist([lng, lat], [targetVenueLoc.lng, targetVenueLoc.lat]);
-             if (dist < 20) state = 'TRANSIT_METRO';
+             if (dist < 30) state = 'TRANSIT_METRO';
           }
 
+          // --- MOVIMIENTO ---
           if (targetVenueLoc && state !== 'TRANSIT_METRO') {
              const bearing = turf.bearing([lng, lat], [targetVenueLoc.lng, targetVenueLoc.lat]);
-             const jitter = (Math.random() - 0.5) * 40; 
+             // Jitter suave para naturalidad
+             const jitter = (Math.random() - 0.5) * 15; 
              const distStep = (speed / 3600);
              const dest = turf.destination([lng, lat], distStep, bearing + jitter);
              [lng, lat] = dest.geometry.coordinates;
           }
 
+          // CONTEO
           if (state === 'PARTYING' && targetVenueLoc) {
              for (const v of venues) {
                  if (v.location && 
@@ -182,8 +201,8 @@ export const useSimulation = (venues: Venue[], userCount: number) => {
                  }
              }
           }
-          // SIEMPRE DEVUELVE COLOR CYAN
-          return { ...u, lat, lng, state, targetVenueLoc, color: COL_CYAN, speed, boredomTimer, heatWeight };
+
+          return { ...u, lat, lng, state, targetVenueLoc, color: COL_CYAN, speed, speedFactor, boredomTimer, heatWeight };
         });
 
         setVenueCounts(newCounts);
