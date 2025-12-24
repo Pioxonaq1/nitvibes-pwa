@@ -1,50 +1,33 @@
-export const USER_ROLES = {
-  ADMIN: 'admin',
-  PARTNER: 'partner',
-  GOV: 'gov',
-  USER: 'user',
-  VIBER: 'viber'
-};
-
-export const APP_CONFIG = {
-  name: 'Nitvibes',
-  description: 'Descubre el vibe de tu ciudad',
-  url: 'https://nitvibes.com'
-};
-
-export const NAV_LINKS = [
-  { name: 'Mapa', href: '/mapa' },
-  { name: 'Vibes', href: '/vibes' },
-  { name: 'Perfil', href: '/perfil' },
-];
-
 export const ROUTES = {
   HOME: '/',
-  LOGIN: '/login',
+  LOGIN: '/login', // Genérico (aunque ahora usamos específicos)
   REGISTER: '/register',
-  
-  // Rutas de Admin
-  ADMIN_LOGIN: '/admin/login',
-  ADMIN_DASHBOARD: '/admin',
-  DASHBOARD_ADMIN: '/admin',
-
-  // Rutas de Partner (Negocios)
-  PARTNER_DASHBOARD: '/business',
-  DASHBOARD_PARTNER: '/business',
-  BUSINESS_LOGIN: '/business/login',
-
-  // Rutas de Gobierno
-  GOV_DASHBOARD: '/gov',
-  DASHBOARD_GOV: '/gov',
-  GOV_LOGIN: '/gov/login',
-
-  // Rutas de Usuario / Viber (La que fallaba)
-  DASHBOARD_VIBER: '/perfil',  // 👈 AQUÍ ESTÁ LA SOLUCIÓN
-  DASHBOARD_USER: '/perfil',   // Alias por si acaso
-  VIBER_DASHBOARD: '/perfil',  // Alias por si acaso
-
-  // Rutas Comunes
-  MAP: '/mapa',
+  MAPA: '/mapa',
   VIBES: '/vibes',
-  PROFILE: '/perfil',
+  PERFIL: '/perfil',
+  
+  // RUTAS DE ROLES (MODULARES)
+  // Team (Antes Admin)
+  TEAM_DASHBOARD: '/team/dashboard',
+  TEAM_LOGIN: '/team/login',
+  
+  // Partner (Antes Business)
+  PARTNER_DASHBOARD: '/partner/dashboard',
+  PARTNER_LOGIN: '/partner/login',
+  
+  // Gov
+  GOV_DASHBOARD: '/gov/dashboard',
+  GOV_LOGIN: '/gov/login',
+  
+  // Viber (Usuario)
+  VIBER_DASHBOARD: '/viber/dashboard',
+  VIBER_LOGIN: '/viber/login',
+};
+
+// Mantenemos compatibilidad por si algún componente viejo busca las keys antiguas
+export const DASHBOARD_ROUTES = {
+  ADMIN: ROUTES.TEAM_DASHBOARD,
+  PARTNER: ROUTES.PARTNER_DASHBOARD,
+  GOV: ROUTES.GOV_DASHBOARD,
+  VIBER: ROUTES.VIBER_DASHBOARD
 };
