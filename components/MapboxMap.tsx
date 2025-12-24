@@ -1,25 +1,16 @@
+
 "use client";
 
 import React, { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { getDensityColor } from '@/lib/useSimulation';
+import { METRO_STATIONS } from '@/lib/metroData';
 
-// Definimos las Props que recibe del padre (page.tsx)
-interface MapboxMapProps {
-  venues: any[];
-  simulatedUsers: any[]; // Array de usuarios con lat, lng, color
-  densityData: Record<string, number>; // { id_venue: cantidad_usuarios }
-}
+export default function MapboxMap({ venues, simulatedUsers, densityData }) {
+  const mapContainer = useRef(null);
+  const mapRef = useRef(null);
+  const venueMarkersRef = useRef({});
 
-export default function MapboxMap({ venues, simulatedUsers, densityData }: MapboxMapProps) {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  
-  // Guardamos referencias a los marcadores de venues para actualizar su color sin borrarlos
-  const venueMarkersRef = useRef<Record<string, mapboxgl.Marker>>({});
-
-  // 1. INICIALIZACIÓN DEL MAPA (Solo una vez)
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!token || !mapContainer.current) return;
@@ -28,135 +19,122 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
     
     const map = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11', // Mapa oscuro para resaltar neones
-      center: [2.1696, 41.3880], // Centro aprox Barcelona
-      zoom: 13.5,
-      pitch: 45, // Inclinación 3D
-      bearing: -10
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [2.1700, 41.3870],
+      zoom: 13,
+      pitch: 45,
     });
     
     mapRef.current = map;
 
     map.on('load', () => {
-      // --- CAPA DE USUARIOS (VIBERS) ---
-      // Usamos GeoJSON Source porque es lo único que aguanta 1000 puntos a 60fps
       map.addSource('users-source', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
 
+      // 1. HEATMAP (Fondo)
       map.addLayer({
-        id: 'users-layer',
-        type: 'circle',
+        id: 'user-heat',
+        type: 'heatmap',
         source: 'users-source',
+        maxzoom: 18,
         paint: {
-          // Radio dinámico según zoom (más grandes al acercarse)
-          'circle-radius': [
-            'interpolate', ['exponential', 2], ['zoom'],
-            12, 1.5,
-            15, 4,
-            22, 10
+          'heatmap-weight': 1,
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 1, 15, 3],
+          'heatmap-color': [
+            'interpolate', ['linear'], ['heatmap-density'],
+            0, 'rgba(0,0,0,0)',
+            0.2, '#22c55e', 
+            0.5, '#eab308', 
+            0.8, '#ef4444' 
           ],
-          // Color leído directamente de la propiedad 'color' que manda el simulador
-          'circle-color': ['get', 'color'], 
-          'circle-opacity': 0.8,
-          // Un pequeño borde negro para definición
-          'circle-stroke-width': 1,
-          'circle-stroke-color': '#000000'
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 15, 15, 40],
+          'heatmap-opacity': 0.8
         }
       });
-      
-      // Efecto Hover
-      map.on('mouseenter', 'users-layer', () => map.getCanvas().style.cursor = 'pointer');
-      map.on('mouseleave', 'users-layer', () => map.getCanvas().style.cursor = '');
+
+      // 2. PUNTOS (Encima)
+      map.addLayer({
+        id: 'user-points',
+        type: 'circle',
+        source: 'users-source',
+        minzoom: 13,
+        paint: {
+          'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 13, 1.5, 16, 3],
+          'circle-color': ['get', 'color'],
+          'circle-opacity': 0.9,
+          'circle-stroke-width': 0
+        }
+      });
+
+      // 3. METROS
+      METRO_STATIONS.forEach(station => {
+        const el = document.createElement('div');
+        el.className = 'metro-marker';
+        el.innerHTML = 'M';
+        el.style.cssText = 'background:#0055A5; color:white; width:16px; height:16px; font-size:10px; font-weight:bold; display:flex; align-items:center; justify-content:center; border:1px solid white; z-index:5;';
+        new mapboxgl.Marker(el).setLngLat([station.lng, station.lat]).addTo(map);
+      });
     });
 
     return () => map.remove();
   }, []);
 
-  // 2. ACTUALIZACIÓN DE USUARIOS (Cada frame/segundo que cambie simulatedUsers)
   useEffect(() => {
     if (!mapRef.current || !mapRef.current.getSource('users-source')) return;
 
-    // Convertimos el array de usuarios JS a GeoJSON para Mapbox
-    const geoJsonData: any = {
+    const geoJsonData = {
       type: 'FeatureCollection',
       features: simulatedUsers.map(user => ({
         type: 'Feature',
-        properties: {
-          id: user.id,
-          color: user.color, // Cyan o Gris según lógica del simulador
-          speed: user.speed
-        },
-        geometry: {
-          type: 'Point',
-          coordinates: [user.lng, user.lat]
-        }
+        properties: { color: user.color },
+        geometry: { type: 'Point', coordinates: [user.lng, user.lat] }
       }))
     };
 
-    // Actualizamos la fuente de datos (Mapbox repinta solo)
-    (mapRef.current.getSource('users-source') as mapboxgl.GeoJSONSource).setData(geoJsonData);
-
+    mapRef.current.getSource('users-source').setData(geoJsonData);
   }, [simulatedUsers]);
 
-  // 3. GESTIÓN DE VENUES Y SEMÁFORO DE DENSIDAD
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     venues.forEach(venue => {
-      // A. Si el marcador no existe, lo creamos
+      const count = densityData[venue.id] || 0;
+      
       if (!venueMarkersRef.current[venue.id]) {
-        // Creamos elemento DOM personalizado
         const el = document.createElement('div');
-        el.className = 'venue-marker'; // Clase para CSS (ver abajo)
-        el.style.width = '24px';
-        el.style.height = '24px';
-        el.style.borderRadius = '50%';
-        el.style.border = '3px solid white'; // Borde base
-        el.style.backgroundColor = '#18181b'; // Fondo oscuro (zinc-900)
-        el.style.boxShadow = '0 0 15px rgba(0,0,0,0.5)';
-        el.style.transition = 'all 0.3s ease'; // Transición suave de color
-        
-        // Icono simple dentro (opcional)
-        el.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;font-size:10px;">🏢</div>';
+        el.className = 'venue-marker';
+        el.style.cssText = 'width:24px; height:24px; border-radius:50%; border:2px solid white; background:#18181b; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;';
+        el.innerHTML = '🏢';
 
-        // Popup con nombre
-        const popup = new mapboxgl.Popup({ offset: 25, closeButton: false })
-          .setHTML(`<strong style="color:black">${venue.name}</strong><br><span style="color:#555;font-size:10px">Esperando datos...</span>`);
-
-        // Añadir al mapa
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([venue.location._long, venue.location._lat])
-          .setPopup(popup)
-          .addTo(map);
-
+        const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(`<b style="color:black">${venue.name}</b>`);
+        const marker = new mapboxgl.Marker(el).setLngLat([venue.location._long, venue.location._lat]).setPopup(popup).addTo(map);
         venueMarkersRef.current[venue.id] = marker;
       }
 
-      // B. ACTUALIZAR COLOR SEMÁFORO (DENSIDAD)
-      const count = densityData[venue.id] || 0;
-      const color = getDensityColor(count); // Verde/Amarillo/Rojo
       const marker = venueMarkersRef.current[venue.id];
       const el = marker.getElement();
+      
+      let color = '#808080';
+      if (count > 100) color = '#ef4444';
+      else if (count > 50) color = '#eab308';
+      else if (count > 10) color = '#22c55e';
 
-      // Cambiamos el color del borde y el brillo según aforo
       el.style.borderColor = color;
-      el.style.boxShadow = `0 0 20px ${color}`;
+      el.style.boxShadow = `0 0 ${count > 100 ? 30 : 10}px ${color}`;
 
-      // Actualizamos texto del popup con el conteo en tiempo real
       marker.getPopup()?.setHTML(`
         <div style="text-align:center">
-          <strong style="color:black; font-size:14px;">${venue.name}</strong>
-          <div style="margin-top:4px; padding:4px 8px; border-radius:4px; background:${color}; color:${count > 200 ? 'white' : 'black'}; font-weight:bold;">
-            ${count} personas cerca
+          <strong style="color:black; font-size:12px;">${venue.name}</strong>
+          <div style="margin-top:2px; background:${color}; color:${count > 100 ? 'white':'black'}; border-radius:4px; font-size:11px; font-weight:800; padding:2px 4px;">
+            ${count} VIBERS
           </div>
         </div>
       `);
     });
-
-  }, [venues, densityData]); // Se ejecuta cuando cambian las venues o los datos de densidad
+  }, [venues, densityData]);
 
   return <div ref={mapContainer} className="w-full h-full" />;
 }
