@@ -1,99 +1,40 @@
 "use client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
-import { Building2, Landmark, Users, UserCircle, LogOut, ArrowRight } from 'lucide-react';
-
-export default function PerfilPage() {
-  const { user, logout } = useAuth();
+export default function AccessSelector() {
   const router = useRouter();
+  const profiles = [
+    { id: "viber", title: "VIBERS", desc: "Disfruta de la noche", icon: "🎉", color: "from-blue-500 to-purple-600", link: "/viber/login" },
+    { id: "partner", title: "PARTNERS", desc: "Gestión de Venues", icon: "🏢", color: "from-purple-600 to-pink-600", link: "/partner/login" },
+    { id: "gov", title: "GOV", desc: "Entidades Públicas", icon: "⚖️", color: "from-emerald-500 to-teal-600", link: "/gov/login" },
+    { id: "team", title: "TEAM", desc: "Admin & Staff", icon: "🛡️", color: "from-gray-700 to-gray-900", link: "/team/login" }
+  ];
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/');
-  };
-
-  // Redirección inteligente según el rol del usuario logueado [cite: 2025-12-19, 2025-12-21]
-  const goToPanel = () => {
-    if (!user) return;
-    if (user.role === 'admin' || user.role === 'colaborador') {
-      router.push('/team/dashboard');
-    } else if (user.role === 'partner') {
-      router.push('/partner/dashboard');
-    } else if (user.role === 'gov') {
-      router.push('/gov/dashboard');
-    } else {
-      router.push('/viber/dashboard');
-    }
-  };
-
-  // Si ya hay un usuario logueado, mostramos su opción de ir al panel [cite: 2025-12-21]
-  if (user && user.role) {
-    return (
-      <div className="min-h-screen bg-black p-6 pt-20 text-white">
-        <h1 className="text-3xl font-black italic mb-2 uppercase tracking-tighter leading-none">HOLA, {user.nombre || 'VIBER'}</h1>
-        <p className="text-zinc-500 mb-8 uppercase text-[10px] font-bold tracking-widest">Perfil de Acceso: <span className="text-green-500">{user.role}</span></p>
-        
-        <div className="space-y-4">
-          <button 
-            onClick={goToPanel}
-            className="w-full bg-zinc-900 border border-white/10 p-5 rounded-[2rem] flex items-center justify-between transition-all active:scale-95"
-          >
-            <span className="font-black italic uppercase text-sm">Ir a mi Panel de Control</span>
-            <ArrowRight size={20} className="text-yellow-400" />
-          </button>
-
-          <button 
-            onClick={handleLogout}
-            className="w-full bg-red-900/10 border border-red-900/30 text-red-500 p-5 rounded-[2rem] flex items-center justify-center gap-2 font-black italic mt-10 uppercase text-[11px]"
-          >
-            <LogOut size={16} /> Cerrar Sesión
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Pantalla de selección de ID para usuarios anónimos [cite: 2025-12-21]
   return (
-    <div className="min-h-screen bg-black p-6 pt-20 flex flex-col items-center">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter leading-none">Nitvibes ID</h2>
-        <p className="text-zinc-500 text-[11px] uppercase font-bold tracking-widest mt-2">Selecciona tu perfil de acceso</p>
+    <div className="min-h-screen bg-black text-white flex flex-col p-6 pb-24">
+      <div className="mt-8 mb-8">
+        <h1 className="text-3xl font-black italic tracking-tighter">NITVIBES <span className="text-purple-500">ID</span></h1>
+        <p className="text-gray-400 text-sm mt-2">Selecciona tu perfil de acceso</p>
       </div>
-
-      <div className="w-full max-w-sm space-y-4">
-        {/* VIBER Login [cite: 2025-12-19] */}
-        <button onClick={() => router.push('/login')} className="w-full bg-white text-black p-6 rounded-[2.5rem] flex items-center gap-4 transition-transform active:scale-95">
-          <UserCircle size={36} />
-          <div className="text-left">
-            <p className="font-black text-xl leading-none italic uppercase">VIBER</p>
-            <p className="text-[10px] font-bold uppercase opacity-60">Acceso Usuarios</p>
-          </div>
-        </button>
-
-        {/* PARTNER / BUSINESS [cite: 2025-12-19, 2025-12-21] */}
-        <button onClick={() => router.push('/partner/dashboard')} className="w-full bg-zinc-900 border border-white/10 text-white p-6 rounded-[2.5rem] flex items-center gap-4 transition-transform active:scale-95">
-          <Building2 size={36} className="text-yellow-400" />
-          <div className="text-left">
-            <p className="font-black text-xl leading-none italic uppercase">PARTNER</p>
-            <p className="text-[10px] font-bold uppercase text-zinc-500">Venues & Bares</p>
-          </div>
-        </button>
-
-        <div className="grid grid-cols-2 gap-4">
-            {/* GOV [cite: 2025-12-19] */}
-            <button onClick={() => router.push('/gov/dashboard')} className="bg-zinc-900 border border-white/10 text-white p-6 rounded-[2.5rem] flex flex-col items-center gap-2 transition-transform active:scale-95">
-                <Landmark size={28} className="text-blue-400" />
-                <span className="font-black text-[10px] uppercase">GOV</span>
-            </button>
-            {/* TEAM [cite: 2025-12-19, 2025-12-24] */}
-            <button onClick={() => router.push('/team/dashboard')} className="bg-zinc-900 border border-white/10 text-white p-6 rounded-[2.5rem] flex flex-col items-center gap-2 transition-transform active:scale-95">
-                <Users size={28} className="text-purple-400" />
-                <span className="font-black text-[10px] uppercase">TEAM</span>
-            </button>
-        </div>
+      <div className="flex-1 grid gap-4 content-center">
+        {profiles.map((profile) => (
+          <Link key={profile.id} href={profile.link} className="group relative overflow-hidden rounded-2xl p-0.5 transition-all active:scale-[0.98]">
+            <div className={`absolute inset-0 bg-gradient-to-r ${profile.color} opacity-50 group-hover:opacity-100 transition-opacity`}></div>
+            <div className="relative bg-gray-900 rounded-xl p-5 flex items-center justify-between h-full">
+              <div className="flex items-center gap-4">
+                <div className="text-3xl bg-black/30 w-12 h-12 flex items-center justify-center rounded-lg">{profile.icon}</div>
+                <div>
+                  <h3 className="font-bold text-lg tracking-wide">{profile.title}</h3>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">{profile.desc}</p>
+                </div>
+              </div>
+              <div className="text-gray-500 group-hover:text-white transition-colors">➜</div>
+            </div>
+          </Link>
+        ))}
       </div>
+      <div className="text-center text-xs text-gray-600 mt-8">v1.2.0 • Secure Access Gateway</div>
     </div>
   );
 }
