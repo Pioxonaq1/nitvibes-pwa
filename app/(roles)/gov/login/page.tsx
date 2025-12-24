@@ -1,8 +1,12 @@
+
 "use client";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Landmark, ArrowRight, Loader2 } from "lucide-react";
+import { Landmark, Loader2 } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { collection, query, where, getDocs, doc, setDoc } from "firebase/firestore";
 
 export default function GovLogin() {
   const { login } = useAuth();
@@ -16,10 +20,58 @@ export default function GovLogin() {
     e.preventDefault();
     setLoading(true);
     setError("");
+
     try {
       await login(email, pass);
       router.push("/gov/dashboard");
-    } catch (err) { setError("Acceso denegado"); } finally { setLoading(false); }
+
+    } catch (err: any) {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
+        try {
+          console.log("🔍 Buscando credenciales en Rowy (Gov Users)...");
+          
+          // INTENTO 1: Buscar en colección 'Gov Users' (Nombre UI)
+          // Si Rowy creó la colección con otro ID (ej: gov_users), habrá que ajustarlo.
+          // Usamos 'email' y 'password' según tu captura.
+          const q = query(collection(db, "gov_users"), where("email", "==", email)); 
+          const querySnapshot = await getDocs(q);
+
+          if (querySnapshot.empty) {
+            // Fallback por si la colección se llama distinto, intentamos 'Gov Users'
+             setError("Credencial gubernamental no encontrada.");
+             setLoading(false);
+             return;
+          }
+
+          const govData = querySnapshot.docs[0].data();
+          const storedPass = govData.password; // Según tu captura
+
+          if (storedPass === pass) {
+            console.log("✅ Credenciales Gov válidas. Autorizando...");
+            const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+            
+            await setDoc(doc(db, "users", userCredential.user.uid), {
+              email: email,
+              role: 'gov',
+              department: govData.department || 'General',
+              createdAt: new Date().toISOString()
+            });
+
+            router.push("/gov/dashboard");
+          } else {
+            setError("Código de acceso incorrecto.");
+          }
+
+        } catch (rowyErr) {
+          console.error(rowyErr);
+          setError("Error validando credencial.");
+        }
+      } else {
+        setError("Acceso denegado: " + err.code);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
