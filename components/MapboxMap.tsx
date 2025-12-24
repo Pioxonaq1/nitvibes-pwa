@@ -6,7 +6,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { METRO_STATIONS } from '@/lib/metroData';
 
-// --- DEFINICIÓN DE TIPOS ---
+// TIPOS
 interface Venue {
   id: string;
   name: string;
@@ -50,13 +50,12 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
     mapRef.current = map;
 
     map.on('load', () => {
-      // FUENTE
       map.addSource('users-source', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       });
 
-      // 1. HEATMAP (Fondo)
+      // 1. HEATMAP ACTUALIZADO (Nueva Escala)
       map.addLayer({
         id: 'user-heat',
         type: 'heatmap',
@@ -68,16 +67,17 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
             0, 'rgba(0,0,0,0)',
-            0.2, '#22c55e', 
-            0.5, '#eab308', 
-            0.8, '#ef4444' 
+            0.1, '#22c55e', // Verde (1-15 aprox relativo)
+            0.3, '#eab308', // Amarillo (16-50)
+            0.6, '#fb7185', // Rojo Claro / Salmón (50-80)
+            0.9, '#ef4444'  // Rojo Intenso (>80)
           ],
           'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 15, 15, 40],
           'heatmap-opacity': 0.8
         }
       });
 
-      // 2. PUNTOS (Encima)
+      // 2. PUNTOS
       map.addLayer({
         id: 'user-points',
         type: 'circle',
@@ -104,7 +104,7 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
     return () => map.remove();
   }, []);
 
-  // ACTUALIZAR POSICIONES
+  // UPDATE USUARIOS
   useEffect(() => {
     if (!mapRef.current || !mapRef.current.getSource('users-source')) return;
 
@@ -120,7 +120,7 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
     (mapRef.current.getSource('users-source') as mapboxgl.GeoJSONSource).setData(geoJsonData);
   }, [simulatedUsers]);
 
-  // ACTUALIZAR VENUES
+  // UPDATE VENUES (Nueva lógica de colores de borde)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -129,7 +129,6 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
       const count = densityData[venue.id] || 0;
       
       if (!venueMarkersRef.current[venue.id]) {
-        // Crear marcador si no existe
         const el = document.createElement('div');
         el.className = 'venue-marker';
         el.style.cssText = 'width:24px; height:24px; border-radius:50%; border:2px solid white; background:#18181b; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;';
@@ -137,8 +136,7 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
 
         const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(`<b style="color:black">${venue.name}</b>`);
         
-        // Checkeo defensivo de location
-        if (venue.location && venue.location._long && venue.location._lat) {
+        if (venue.location && venue.location._long) {
             const marker = new mapboxgl.Marker(el)
                 .setLngLat([venue.location._long, venue.location._lat])
                 .setPopup(popup)
@@ -147,23 +145,24 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
         }
       }
 
-      // Actualizar estilo si existe el marcador
       const marker = venueMarkersRef.current[venue.id];
       if (marker) {
           const el = marker.getElement();
           
-          let color = '#808080';
-          if (count > 100) color = '#ef4444';
-          else if (count > 50) color = '#eab308';
-          else if (count > 10) color = '#22c55e';
+          // ESCALA DE COLORES SOLICITADA
+          let color = '#808080'; // 0
+          if (count > 80) color = '#ef4444';      // Rojo Intenso
+          else if (count > 50) color = '#fb7185'; // Rojo Claro
+          else if (count > 15) color = '#eab308'; // Amarillo
+          else if (count > 0) color = '#22c55e';  // Verde
 
           el.style.borderColor = color;
-          el.style.boxShadow = `0 0 ${count > 100 ? 30 : 10}px ${color}`;
+          el.style.boxShadow = `0 0 ${count > 50 ? 30 : 10}px ${color}`;
 
           marker.getPopup()?.setHTML(`
             <div style="text-align:center">
               <strong style="color:black; font-size:12px;">${venue.name}</strong>
-              <div style="margin-top:2px; background:${color}; color:${count > 100 ? 'white':'black'}; border-radius:4px; font-size:11px; font-weight:800; padding:2px 4px;">
+              <div style="margin-top:2px; background:${color}; color:${count > 50 ? 'white':'black'}; border-radius:4px; font-size:11px; font-weight:800; padding:2px 4px;">
                 ${count} VIBERS
               </div>
             </div>
