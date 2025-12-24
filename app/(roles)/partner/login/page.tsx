@@ -1,4 +1,3 @@
-
 "use client";
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -22,54 +21,42 @@ export default function PartnerLogin() {
     setError("");
 
     try {
-      // 1. Intento normal de Login
       await login(email, pass);
       router.push("/partner/dashboard");
-
     } catch (err: any) {
-      // 2. Si el usuario no existe en Auth, buscamos en ROWY (Colección Venues)
+      // Si falla Firebase Auth, miramos en Firestore (Rowy)
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-login-credentials') {
         try {
-          console.log("🔍 Buscando credenciales en Rowy (Venues)...");
-          
-          // Buscamos en la colección 'Venues' por el campo 'b2b_email' (según tu captura)
-          const q = query(collection(db, "Venues"), where("b2b_email", "==", email));
+          // CORRECCIÓN: Buscamos en "venues" (minúscula)
+          const q = query(collection(db, "venues"), where("b2b_email", "==", email));
           const querySnapshot = await getDocs(q);
 
           if (querySnapshot.empty) {
-            setError("Este email no está registrado como Venue.");
+            setError("No existe una Venue con este email.");
             setLoading(false);
             return;
           }
 
-          // Verificamos la contraseña manual
           const venueData = querySnapshot.docs[0].data();
-          const storedPass = venueData.b2b_password; // Según tu captura
-
-          if (storedPass === pass) {
-            // ¡COINCIDENCIA! Creamos el usuario en Firebase Auth automáticamente
-            console.log("✅ Credenciales Rowy válidas. Creando acceso...");
+          if (venueData.b2b_password === pass) {
+            // Crear usuario puente
             const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-            
-            // Asignamos el rol 'partner' y vinculamos con el ID del Venue si es necesario
             await setDoc(doc(db, "users", userCredential.user.uid), {
               email: email,
               role: 'partner',
-              venueId: querySnapshot.docs[0].id, // Guardamos referencia al documento de Venue
+              venueId: querySnapshot.docs[0].id,
               createdAt: new Date().toISOString()
             });
-
             router.push("/partner/dashboard");
           } else {
-            setError("Contraseña incorrecta (Verifica Rowy)");
+            setError("Contraseña incorrecta.");
           }
-
-        } catch (rowyErr) {
+        } catch (rowyErr: any) {
           console.error(rowyErr);
-          setError("Error validando datos de Venue.");
+          setError("Error técnico: " + rowyErr.message);
         }
       } else {
-        setError("Error de acceso: " + err.code);
+        setError("Error: " + err.code);
       }
     } finally {
       setLoading(false);
