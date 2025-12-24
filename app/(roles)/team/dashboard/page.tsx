@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { LogOut, Lock } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import TeamDashboard from '@/components/dashboard/team/TeamDashboard';
+import TeamDashboard from '../components/TeamDashboard';
 
 export default function AdminPage() {
   // Eliminamos 'login' de la desestructuración para evitar el Type Error [cite: 2025-12-18]

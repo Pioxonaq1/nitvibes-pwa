@@ -17,13 +17,13 @@ export default function PerfilPage() {
   const goToPanel = () => {
     if (!user) return;
     if (user.role === 'admin' || user.role === 'colaborador') {
-      router.push('/admin');
+      router.push('/team/dashboard');
     } else if (user.role === 'partner') {
-      router.push('/business');
+      router.push('/partner/dashboard');
     } else if (user.role === 'gov') {
-      router.push('/gov');
+      router.push('/gov/dashboard');
     } else {
-      router.push('/viber');
+      router.push('/viber/dashboard');
     }
   };
 
@@ -73,7 +73,7 @@ export default function PerfilPage() {
         </button>
 
         {/* PARTNER / BUSINESS [cite: 2025-12-19, 2025-12-21] */}
-        <button onClick={() => router.push('/business')} className="w-full bg-zinc-900 border border-white/10 text-white p-6 rounded-[2.5rem] flex items-center gap-4 transition-transform active:scale-95">
+        <button onClick={() => router.push('/partner/dashboard')} className="w-full bg-zinc-900 border border-white/10 text-white p-6 rounded-[2.5rem] flex items-center gap-4 transition-transform active:scale-95">
           <Building2 size={36} className="text-yellow-400" />
           <div className="text-left">
             <p className="font-black text-xl leading-none italic uppercase">PARTNER</p>
@@ -83,12 +83,12 @@ export default function PerfilPage() {
 
         <div className="grid grid-cols-2 gap-4">
             {/* GOV [cite: 2025-12-19] */}
-            <button onClick={() => router.push('/gov')} className="bg-zinc-900 border border-white/10 text-white p-6 rounded-[2.5rem] flex flex-col items-center gap-2 transition-transform active:scale-95">
+            <button onClick={() => router.push('/gov/dashboard')} className="bg-zinc-900 border border-white/10 text-white p-6 rounded-[2.5rem] flex flex-col items-center gap-2 transition-transform active:scale-95">
                 <Landmark size={28} className="text-blue-400" />
                 <span className="font-black text-[10px] uppercase">GOV</span>
             </button>
             {/* TEAM [cite: 2025-12-19, 2025-12-24] */}
-            <button onClick={() => router.push('/admin')} className="bg-zinc-900 border border-white/10 text-white p-6 rounded-[2.5rem] flex flex-col items-center gap-2 transition-transform active:scale-95">
+            <button onClick={() => router.push('/team/dashboard')} className="bg-zinc-900 border border-white/10 text-white p-6 rounded-[2.5rem] flex flex-col items-center gap-2 transition-transform active:scale-95">
                 <Users size={28} className="text-purple-400" />
                 <span className="font-black text-[10px] uppercase">TEAM</span>
             </button>
