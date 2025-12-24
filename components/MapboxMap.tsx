@@ -6,7 +6,6 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { METRO_STATIONS } from '@/lib/metroData';
 
-// TIPOS
 interface Venue {
   id: string;
   name: string;
@@ -19,6 +18,7 @@ interface SimulatedUser {
   lat: number;
   lng: number;
   color: string;
+  heatWeight: number; // NUEVO: Controla si brilla o no
   [key: string]: any;
 }
 
@@ -55,29 +55,31 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
         data: { type: 'FeatureCollection', features: [] }
       });
 
-      // 1. HEATMAP ACTUALIZADO (Nueva Escala)
+      // 1. HEATMAP (Ahora usa 'heatWeight')
       map.addLayer({
         id: 'user-heat',
         type: 'heatmap',
         source: 'users-source',
         maxzoom: 18,
         paint: {
-          'heatmap-weight': 1,
+          // USAMOS LA PROPIEDAD 'heatWeight' PARA CONTROLAR VISIBILIDAD
+          'heatmap-weight': ['get', 'heatWeight'], 
+          
           'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 1, 15, 3],
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
             0, 'rgba(0,0,0,0)',
-            0.1, '#22c55e', // Verde (1-15 aprox relativo)
-            0.3, '#eab308', // Amarillo (16-50)
-            0.6, '#fb7185', // Rojo Claro / Salmón (50-80)
-            0.9, '#ef4444'  // Rojo Intenso (>80)
+            0.1, '#22c55e', 
+            0.3, '#eab308', 
+            0.6, '#fb7185', 
+            0.9, '#ef4444' 
           ],
           'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 15, 15, 40],
           'heatmap-opacity': 0.8
         }
       });
 
-      // 2. PUNTOS
+      // 2. PUNTOS (Siempre visibles)
       map.addLayer({
         id: 'user-points',
         type: 'circle',
@@ -112,7 +114,10 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
       type: 'FeatureCollection',
       features: simulatedUsers.map(user => ({
         type: 'Feature',
-        properties: { color: user.color },
+        properties: { 
+            color: user.color,
+            heatWeight: user.heatWeight // PASAMOS EL PESO AL MAPA
+        },
         geometry: { type: 'Point', coordinates: [user.lng, user.lat] }
       }))
     };
@@ -120,7 +125,7 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
     (mapRef.current.getSource('users-source') as mapboxgl.GeoJSONSource).setData(geoJsonData);
   }, [simulatedUsers]);
 
-  // UPDATE VENUES (Nueva lógica de colores de borde)
+  // UPDATE VENUES
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -149,12 +154,11 @@ export default function MapboxMap({ venues, simulatedUsers, densityData }: Mapbo
       if (marker) {
           const el = marker.getElement();
           
-          // ESCALA DE COLORES SOLICITADA
-          let color = '#808080'; // 0
-          if (count > 80) color = '#ef4444';      // Rojo Intenso
-          else if (count > 50) color = '#fb7185'; // Rojo Claro
-          else if (count > 15) color = '#eab308'; // Amarillo
-          else if (count > 0) color = '#22c55e';  // Verde
+          let color = '#808080'; 
+          if (count > 80) color = '#ef4444';      
+          else if (count > 50) color = '#fb7185'; 
+          else if (count > 15) color = '#eab308'; 
+          else if (count > 0) color = '#22c55e';  
 
           el.style.borderColor = color;
           el.style.boxShadow = `0 0 ${count > 50 ? 30 : 10}px ${color}`;
