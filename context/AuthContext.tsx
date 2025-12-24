@@ -1,64 +1,78 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { 
   onAuthStateChanged, 
-  User as FirebaseUser, 
+  signInWithEmailAndPassword, 
   signOut, 
-  GoogleAuthProvider, 
-  signInWithPopup 
-} from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+  createUserWithEmailAndPassword,
+  User as FirebaseUser,
+  GoogleAuthProvider,
+  signInWithPopup
+} from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
-// 1. Definimos la estructura real de Nitvibes [2025-12-19]
-interface NitvibesUser {
+// Definición del tipo de Usuario con Rol
+type UserData = {
   uid: string;
   email: string | null;
-  role: 'free' | 'partner' | 'gov' | 'admin' | 'colaborador';
+  role: string; // 'viber' | 'partner' | 'gov' | 'team'
   nombre?: string;
-}
+};
 
-// 2. Definimos qué funciones exporta nuestro contexto
+// Interfaz que define qué funciones expone el contexto
+// ESTO ES LO QUE SOLUCIONA TU ERROR DE TYPESCRIPT
 interface AuthContextType {
-  user: NitvibesUser | null;
+  user: UserData | null;
   loading: boolean;
+  login: (email: string, pass: string) => Promise<void>;
+  signup: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
   loginWithGoogle: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  login: async () => {},
+  signup: async () => {},
+  logout: async () => {},
+  loginWithGoogle: async () => {},
+});
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<NitvibesUser | null>(null);
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Función para Login con Google (Requerida en app/login/page.tsx) [2025-12-19]
-  const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error("Error en Google Login:", error);
-      throw error;
-    }
-  };
-
-  const logout = () => signOut(auth);
-
+  // 1. Escuchar cambios de sesión y recuperar Rol de Firestore
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        // Leemos la tabla real de usuarios en Firestore para obtener el ROL y NOMBRE [2025-12-19]
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        const data = userDoc.data();
-
-        setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          role: data?.role || 'free', // Por defecto es free si no hay registro
-          nombre: data?.nombre || firebaseUser.displayName || 'VIBER',
-        });
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        try {
+          // Buscamos el rol en la colección 'users'
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) {
+            setUser({
+              uid: currentUser.uid,
+              email: currentUser.email,
+              role: userDoc.data().role || 'viber',
+              nombre: userDoc.data().nombre
+            });
+          } else {
+            // Si es usuario nuevo (ej: Google), le damos rol Viber temporalmente
+            setUser({
+              uid: currentUser.uid,
+              email: currentUser.email,
+              role: 'viber'
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching user role:", error);
+          setUser({ uid: currentUser.uid, email: currentUser.email, role: 'viber' });
+        }
       } else {
         setUser(null);
       }
@@ -68,17 +82,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  // 2. Funciones de Autenticación
+  const login = async (email: string, pass: string) => {
+    await signInWithEmailAndPassword(auth, email, pass);
+  };
+
+  const signup = async (email: string, pass: string) => {
+    const res = await createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db, "users", res.user.uid), {
+      email,
+      role: 'viber',
+      createdAt: new Date().toISOString()
+    });
+  };
+
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    const res = await signInWithPopup(auth, provider);
+    const userDoc = await getDoc(doc(db, "users", res.user.uid));
+    if (!userDoc.exists()) {
+      await setDoc(doc(db, "users", res.user.uid), {
+        email: res.user.email,
+        role: 'viber',
+        createdAt: new Date().toISOString()
+      });
+    }
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+    setUser(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, logout, loginWithGoogle }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, loginWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );
-}
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };
