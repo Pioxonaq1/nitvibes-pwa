@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
-import { Zap, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Zap, Clock, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 export default function FlashSlider() {
   const promos = [
@@ -12,11 +13,11 @@ export default function FlashSlider() {
     <section className="mb-8">
       <div className="flex justify-between items-end mb-4 px-1">
         <h2 className="text-[11px] font-black uppercase italic tracking-widest text-yellow-400 flex items-center gap-2">
-          <Zap size={14} fill="currentColor" /> Acciones Flash
+          <Zap size={14} fill="currentColor" /> Acciones Flash (Top 10)
         </h2>
-        <div className="flex gap-2 text-zinc-600">
-          <ChevronLeft size={16} /><ChevronRight size={16} />
-        </div>
+        <Link href="/viber/flash-actions" className="text-[9px] font-black uppercase text-zinc-500 flex items-center gap-1 hover:text-white transition-colors">
+          Ver todas <ChevronRight size={12} />
+        </Link>
       </div>
       <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
         {promos.map((promo, i) => (
@@ -29,7 +30,7 @@ export default function FlashSlider() {
               <h3 className="text-[10px] font-black uppercase italic tracking-tighter text-white truncate">{promo.venue}</h3>
               <p className="text-[12px] font-bold text-yellow-400 uppercase mt-1">{promo.promo}</p>
             </div>
-            <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2 text-[9px] font-bold italic">
+            <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2 text-[9px] font-bold">
               <div className="text-zinc-500">€ {promo.price}</div>
               <div className="text-blue-400 uppercase">{promo.dist}</div>
             </div>
