@@ -2,13 +2,13 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Store, Mail, Lock, ArrowLeft, Loader2 } from "lucide-react";
-import { auth, db } from "@/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { Store, ArrowLeft, Loader2, Lock, Mail } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 export default function VenueLoginPage() {
   const router = useRouter();
+  const { setExternalUser } = useAuth(); 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,30 +18,39 @@ export default function VenueLoginPage() {
     setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      // 1. Buscamos el local en la colección 'venues' por su b2b_email [cite: 2025-12-25]
+      const venuesRef = collection(db, "venues");
+      const q = query(venuesRef, where("b2b_email", "==", email));
+      const querySnapshot = await getDocs(q);
 
-      // REGLA: Verificar que el ID existe en la colección de venues [cite: 2025-12-25]
-      const venueRef = doc(db, "venues", user.uid);
-      const venueSnap = await getDoc(venueRef);
+      if (querySnapshot.empty) {
+        alert("Email B2B no encontrado en nuestra base de datos de Venues.");
+        setLoading(false);
+        return;
+      }
 
-      if (venueSnap.exists()) {
+      const venueDoc = querySnapshot.docs[0];
+      const venueData = venueDoc.data();
+
+      // 2. Validamos la contraseña contra el campo b2b_password [cite: 2025-12-25]
+      if (venueData.b2b_password === password) {
+        // 3. Seteamos el usuario en el contexto con rol partner para activar el Dashboard [cite: 2025-12-21, 2025-12-25]
+        if (setExternalUser) {
+          setExternalUser({
+            uid: venueDoc.id,
+            nombre: venueData.name,
+            role: "partner",
+            ...venueData
+          });
+        }
         router.push("/partner/venues/dashboard");
       } else {
-        // Si no está en venues, comprobamos si el usuario tiene el rol partner asignado [cite: 2025-12-21]
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if (userSnap.exists() && userSnap.data().role === "partner") {
-          router.push("/partner/venues/dashboard");
-        } else {
-          alert("Acceso denegado: Este perfil no está registrado como Venue.");
-          setLoading(false);
-        }
+        alert("Contraseña B2B incorrecta.");
+        setLoading(false);
       }
     } catch (error) {
-      console.error("Error Login:", error);
-      alert("Error de acceso. Por favor, verifica tus datos.");
+      console.error("Error en login B2B:", error);
+      alert("Error de conexión con Firebase Venues.");
       setLoading(false);
     }
   };
@@ -60,41 +69,40 @@ export default function VenueLoginPage() {
           VENUES <span className="text-pink-500 italic">LOGIN</span>
         </h1>
         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center mb-8 italic">
-          Acceso para locales registrados
+          Acceso exclusivo para Locales (B2B)
         </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <input 
-            type="email" 
-            placeholder="email@local.com" 
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full h-16 bg-blue-50 border border-white/5 rounded-2xl px-6 text-sm font-bold text-black focus:border-pink-500 outline-none transition-all" 
-          />
-          <input 
-            type="password" 
-            placeholder="••••••••" 
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full h-16 bg-blue-50 border border-white/5 rounded-2xl px-6 text-sm font-bold text-black focus:border-pink-500 outline-none transition-all" 
-          />
+          <div className="relative">
+            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+            <input 
+              type="email" 
+              placeholder="apolo@test.com" 
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full h-16 bg-blue-50 border border-white/5 rounded-2xl pl-12 pr-4 text-sm font-bold text-black focus:border-pink-500 outline-none transition-all placeholder:text-zinc-400" 
+            />
+          </div>
+          <div className="relative">
+            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={18} />
+            <input 
+              type="password" 
+              placeholder="••••••••" 
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full h-16 bg-blue-50 border border-white/5 rounded-2xl pl-12 pr-4 text-sm font-bold text-black focus:border-pink-500 outline-none transition-all placeholder:text-zinc-400" 
+            />
+          </div>
           <button 
             type="submit"
             disabled={loading}
             className="w-full bg-white text-black h-16 rounded-2xl font-black uppercase italic text-lg shadow-xl active:scale-95 transition-all mt-4 flex items-center justify-center gap-2"
           >
-            {loading ? <Loader2 className="animate-spin" /> : "ENTRAR AL PANEL"}
+            {loading ? <Loader2 className="animate-spin text-pink-500" /> : "ENTRAR AL PANEL"}
           </button>
         </form>
-
-        <div className="mt-10 pt-6 border-t border-white/5 text-center">
-          <p className="text-[10px] font-black uppercase italic text-zinc-500 mb-2">¿Quieres registrar tu local?</p>
-          <button onClick={() => router.push("/contact/nitvibes")} className="text-xs font-black uppercase italic text-pink-500 hover:text-white transition-colors">
-            Contacta con NITVIBES
-          </button>
-        </div>
 
         <button onClick={() => router.push("/perfil")} className="w-full flex items-center justify-center gap-2 text-zinc-400 text-[9px] font-black uppercase italic pt-8">
           <ArrowLeft size={12} /> Volver a Access ID
