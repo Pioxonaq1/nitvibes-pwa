@@ -22,7 +22,6 @@ type UserData = {
 };
 
 // Interfaz que define qué funciones expone el contexto
-// ESTO ES LO QUE SOLUCIONA TU ERROR DE TYPESCRIPT
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
@@ -52,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         try {
-          // Buscamos el rol en la colección 'users'
+          // Buscamos el rol en la colección 'users' para verificar permisos
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
           if (userDoc.exists()) {
             setUser({
@@ -62,7 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               nombre: userDoc.data().nombre
             });
           } else {
-            // Si es usuario nuevo (ej: Google), le damos rol Viber temporalmente
+            // Si el documento no existe en 'users', lo tratamos como Viber por defecto
             setUser({
               uid: currentUser.uid,
               email: currentUser.email,
@@ -83,40 +82,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // 2. Funciones de Autenticación
+
+  // Login con Email y Password
   const login = async (email: string, pass: string) => {
     await signInWithEmailAndPassword(auth, email, pass);
   };
 
+  // Registro manual de Viber (B2C)
   const signup = async (email: string, pass: string) => {
     const res = await createUserWithEmailAndPassword(auth, email, pass);
     await setDoc(doc(db, "users", res.user.uid), {
-      email,
+      email: email.toLowerCase(),
       role: 'viber',
+      shareLocation: true, // Regla: Usuario registrado comparte ubicación
       createdAt: new Date().toISOString()
     });
   };
 
+  // Acceso con Google para Vibers
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    const res = await signInWithPopup(auth, provider);
-    const userDoc = await getDoc(doc(db, "users", res.user.uid));
-    if (!userDoc.exists()) {
-      await setDoc(doc(db, "users", res.user.uid), {
-        email: res.user.email,
-        role: 'viber',
-        createdAt: new Date().toISOString()
-      });
+    try {
+      const res = await signInWithPopup(auth, provider);
+      const userDocRef = doc(db, "users", res.user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      // Si es la primera vez que entra con Google, creamos su perfil Viber
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, {
+          email: res.user.email?.toLowerCase(),
+          role: 'viber',
+          nombre: res.user.displayName,
+          shareLocation: true, // Regla: Compartir ubicación automáticamente
+          createdAt: new Date().toISOString()
+        });
+      }
+    } catch (error) {
+      console.error("Error in Google Login:", error);
+      throw error;
     }
   };
 
+  // Logout: Desconecta sesión y devuelve al estado anónimo
   const logout = async () => {
     await signOut(auth);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, loginWithGoogle }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
+    <AuthContext.Provider value={{ user, loading, login
