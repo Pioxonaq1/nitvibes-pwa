@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import { X, Heart, Users, Beer, Target, Briefcase, UserPlus, Sparkles, CheckCircle2 } from "lucide-react";
 
 interface TuVibeSelectorProps {
@@ -11,7 +11,14 @@ interface TuVibeSelectorProps {
   onToggleMood: (enabled: boolean) => void;
 }
 
-export default function TuVibeSelector({ isOpen, onClose, activeVibes, isMoodEnabled, onToggleVibe, onToggleMood }: TuVibeSelectorProps) {
+export default function TuVibeSelector({ 
+  isOpen, 
+  onClose, 
+  activeVibes, 
+  isMoodEnabled, 
+  onToggleVibe, 
+  onToggleMood 
+}: TuVibeSelectorProps) {
   if (!isOpen) return null;
 
   const vibes = [
@@ -23,6 +30,19 @@ export default function TuVibeSelector({ isOpen, onClose, activeVibes, isMoodEna
     { id: "amigos", label: "Salgo con amigos/as", icon: Users, color: "text-green-400" },
     { id: "afinidades", label: "Gente con mis afinidades", icon: Target, color: "text-purple-400" },
   ];
+
+  // Nueva función para manejar la activación y el cierre automático [cite: 2025-12-25]
+  const handleActivateMood = () => {
+    const nextState = !isMoodEnabled;
+    onToggleMood(nextState);
+    
+    // Solo cerramos automáticamente si el usuario está ACTIVANDO el mood
+    if (nextState) {
+      setTimeout(() => {
+        onClose();
+      }, 300); // Pequeño delay para feedback visual
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/90 backdrop-blur-md">
@@ -55,7 +75,7 @@ export default function TuVibeSelector({ isOpen, onClose, activeVibes, isMoodEna
 
         <div className="mt-6 pt-6 border-t border-white/5">
           <button 
-            onClick={() => onToggleMood(!isMoodEnabled)}
+            onClick={handleActivateMood}
             className={`w-full py-4 rounded-2xl font-black uppercase italic tracking-widest transition-all ${
               isMoodEnabled ? "bg-red-500/20 text-red-500 border border-red-500/50" : "bg-green-500 text-black shadow-lg shadow-green-500/20"
             }`}
