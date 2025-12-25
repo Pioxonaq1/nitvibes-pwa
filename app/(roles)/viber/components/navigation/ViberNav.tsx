@@ -15,19 +15,19 @@ export default function ViberNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-blue-500/20 pb-8 pt-4 px-8 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-white/5 pb-8 pt-4 px-8 z-50">
       <div className="flex justify-between items-center max-w-md mx-auto">
         {navItems.map((item) => {
-          const isActive = pathname === item.path || (item.label === "Panel" && pathname.includes("viber"));
+          const isActive = pathname === item.path || (item.label === "Panel" && pathname.includes("/viber/dashboard"));
           return (
             <Link
               key={item.label}
               href={item.path}
               className={`flex flex-col items-center gap-1.5 transition-all ${
-                isActive ? "text-blue-400 scale-105" : "text-zinc-600 hover:text-white"
+                isActive ? "text-blue-400 scale-110" : "text-zinc-600 hover:text-white"
               }`}
             >
-              <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              <item.icon size={20} strokeWidth={isActive ? 3 : 2} />
               <span className="text-[9px] font-black uppercase tracking-widest italic">
                 {item.label}
               </span>
