@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { 
   LogOut, Map, Sparkles, User, Users, UserPlus, 
-  ChevronRight, ChevronLeft, Plus, Play 
+  ChevronRight, ChevronLeft, Plus, Play, Zap, Clock, Euro
 } from "lucide-react";
 
 export default function ViberDashboard() {
@@ -26,7 +26,7 @@ export default function ViberDashboard() {
           <h1 className="text-2xl font-black italic tracking-tighter uppercase text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">
             PANEL VIBER
           </h1>
-          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em]">Console v.1.0</p>
+          <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em]">User Console v.1.0</p>
         </div>
         <button 
           onClick={handleLogout}
@@ -52,21 +52,41 @@ export default function ViberDashboard() {
         ))}
       </div>
 
-      {/* 2. SLIDER VIBES DE AMIGOS */}
+      {/* 2. MUESTREO DE ACCIONES FLASH (Promos de Venues) [cite: 2025-12-23] */}
       <section className="mb-8">
         <div className="flex justify-between items-end mb-4 px-1">
-          <h2 className="text-[11px] font-black uppercase italic tracking-widest text-zinc-400">Vibes de Amigos</h2>
+          <h2 className="text-[11px] font-black uppercase italic tracking-widest text-yellow-400 flex items-center gap-2">
+            <Zap size={14} fill="currentColor" /> Acciones Flash
+          </h2>
           <div className="flex gap-2 text-zinc-600">
             <ChevronLeft size={16} /><ChevronRight size={16} />
           </div>
         </div>
+        
         <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
-          {[1, 2, 3, 4].map((vibe) => (
-            <div key={vibe} className="min-w-[100px] aspect-[3/4] bg-zinc-900 rounded-2xl border border-white/10 relative overflow-hidden flex-shrink-0">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-              <div className="absolute bottom-2 left-2 flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-yellow-400 to-orange-500 border border-black"></div>
-                <span className="text-[8px] font-bold uppercase tracking-tighter">Amigo {vibe}</span>
+          {[
+            { venue: "Opium BCN", promo: "2x1 Copas", time: "45 min", price: "15€", dist: "100m" },
+            { venue: "Pacha", promo: "Entrada Gratis", time: "12 min", price: "0€", dist: "250m" },
+            { venue: "Shôko", promo: "Chupito Regalo", time: "60 min", price: "5€", dist: "500m" }
+          ].map((promo, i) => (
+            <div key={i} className="min-w-[160px] bg-gradient-to-br from-zinc-900 to-black rounded-2xl border border-yellow-500/20 p-4 flex flex-col gap-3 relative overflow-hidden flex-shrink-0 shadow-xl">
+              <div className="flex justify-between items-start">
+                <span className="text-[8px] font-black bg-yellow-500 text-black px-1.5 py-0.5 rounded uppercase tracking-tighter">Flash</span>
+                <div className="flex items-center gap-1 text-[8px] text-zinc-400 font-bold uppercase">
+                  <Clock size={10} /> {promo.time}
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-[10px] font-black uppercase italic tracking-tighter text-white truncate">{promo.venue}</h3>
+                <p className="text-[12px] font-bold text-yellow-400 uppercase leading-none mt-1">{promo.promo}</p>
+              </div>
+
+              <div className="flex justify-between items-center mt-2 border-t border-white/5 pt-2">
+                <div className="flex items-center gap-1 text-[9px] font-bold text-zinc-500">
+                   <Euro size={10} /> {promo.price}
+                </div>
+                <div className="text-[9px] font-bold text-blue-400 uppercase">{promo.dist}</div>
               </div>
             </div>
           ))}
