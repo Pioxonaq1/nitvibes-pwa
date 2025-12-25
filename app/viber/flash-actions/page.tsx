@@ -15,7 +15,8 @@ export default function FlashActionsList() {
     { id: 3, venue: "Shôko", title: "Chupito Regalo", price: 5, dist: 500, time: "60 min", link: "https://maps.google.com" },
   ]);
 
-  const shareOnWhatsApp = (title, venue) => {
+  // Tipado explícito para evitar error de compilación
+  const shareOnWhatsApp = (title: string, venue: string) => {
     const text = encodeURIComponent(`¡Mira esta promo en ${venue}: ${title}! Descúbrelo en Nitvibes.`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
