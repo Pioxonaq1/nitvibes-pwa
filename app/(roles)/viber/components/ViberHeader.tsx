@@ -6,10 +6,11 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function ViberHeader({ onLogout }: { onLogout: () => void }) {
   const { user } = useAuth();
+  
   return (
     <div className="flex justify-between items-start mb-8">
       <div>
-        <h2 className="text-[10px] font-black tracking-[0.3em] uppercase text-zinc-500 mb-1">NITVIBES</h2>
+        <h2 className="text-[10px] font-black tracking-[0.3em] uppercase text-zinc-500 mb-1 leading-none">NITVIBES</h2>
         <h1 className="text-2xl font-black italic tracking-tighter uppercase text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 leading-none">
           PANEL VIBER
         </h1>
@@ -21,7 +22,11 @@ export default function ViberHeader({ onLogout }: { onLogout: () => void }) {
         <Link href="/viber/settings" className="bg-zinc-900 border border-white/10 p-2.5 rounded-full text-zinc-400 hover:text-white transition-colors">
           <Settings size={18} />
         </Link>
-        <button onClick={onLogout} className="bg-zinc-900 border border-white/10 p-2.5 rounded-full text-zinc-400 hover:text-red-500 transition-colors">
+        <button 
+          onClick={onLogout} 
+          className="bg-zinc-900 border border-white/10 p-2.5 rounded-full text-zinc-400 hover:text-red-500 transition-colors"
+          title="Cerrar sesión"
+        >
           <LogOut size={18} />
         </button>
       </div>
