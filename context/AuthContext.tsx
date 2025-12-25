@@ -12,15 +12,16 @@ interface UserData {
   role?: string;
   hasFlash?: boolean;
   vibe?: string;
+  isVenue?: boolean;
 }
 
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
-  login: (email: string, pass: string) => Promise<void>; // Restaurado para GOV/TEAM [cite: 2025-12-25]
+  login: (email: string, pass: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  setExternalUser: (data: UserData) => void; 
+  setExternalUser: (data: UserData) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,7 +41,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'viber' });
         }
       } else {
-        setUser(null);
+        // No borramos el usuario si es un login externo manual (Venue)
+        setUser(prev => prev?.isVenue ? prev : null);
       }
       setLoading(false);
     });
@@ -63,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const setExternalUser = (data: UserData) => {
-    setUser(data);
+    setUser({ ...data, isVenue: true });
   };
 
   return (
