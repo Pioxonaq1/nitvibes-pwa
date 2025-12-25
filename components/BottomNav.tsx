@@ -1,10 +1,9 @@
-
 "use client";
 
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Map, Sparkles, User, LayoutDashboard } from "lucide-react";
+import { Home, Map, Sparkles, User, LayoutDashboard, Zap } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function BottomNav() {
@@ -22,12 +21,16 @@ export default function BottomNav() {
     }
   };
 
+  // Lógica basada en las notas del bloque
   const navItems = [
-    { label: "Inicio", icon: Home, path: "/" },
+    { label: "Home", icon: Home, path: "/" },
     { label: "Mapa", icon: Map, path: "/mapa" },
-    { label: "Vibes", icon: Sparkles, path: "/vibes" },
     { 
-      // 3) El botón Perfil cambia a Panel cuando está logueado
+      label: (user && user.role === 'viber') ? "Flash" : "Vibes", 
+      icon: (user && user.role === 'viber') ? Zap : Sparkles, 
+      path: (user && user.role === 'viber') ? "/viber/flash-actions" : "/vibes" 
+    },
+    { 
       label: user ? "Panel" : "Perfil", 
       icon: user ? LayoutDashboard : User, 
       path: getDashboardLink() 
