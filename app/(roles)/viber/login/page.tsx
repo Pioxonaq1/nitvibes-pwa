@@ -1,58 +1,54 @@
 "use client";
-
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { Chrome, Loader2, AlertTriangle } from "lucide-react";
+import { Chrome, Mail, ArrowLeft, Loader2 } from "lucide-react";
 
 export default function ViberLoginPage() {
   const router = useRouter();
-  const { loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleGoogleLogin = async () => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
-    setError("");
     try {
-      // 1. Ejecuta la lógica de AuthContext (Popup + Registro en Firestore si es nuevo) [cite: 2025-12-19]
-      await loginWithGoogle();
-      
-      // 2. Redirección inmediata al Dashboard orquestado [cite: 2025-12-25]
+      await login(email, password);
       router.push("/viber/dashboard");
-    } catch (err: any) {
-      console.error("Google Login Error:", err);
-      setError("Error al conectar con Google. Revisa tu conexión.");
-    } finally {
+    } catch (err) {
+      alert("Error en el login. Verifica tus datos.");
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm text-center space-y-8">
-        <div>
-          <h2 className="text-[10px] font-black tracking-[0.3em] uppercase text-zinc-500 mb-2 font-mono">Nitvibes Access</h2>
-          <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none">VIBER ACCESS</h1>
-        </div>
-
-        <button 
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          className="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.1)]"
-        >
-          {loading ? <Loader2 className="animate-spin" /> : <><Chrome size={18} /> Entrar con Google</>}
+    <div className="min-h-screen bg-black text-white p-6 flex flex-col items-center justify-center">
+      <div className="w-full max-w-md space-y-8 bg-zinc-900/30 p-8 rounded-[2.5rem] border border-white/5">
+        <h1 className="text-3xl font-black italic uppercase text-center tracking-tighter">VIBER <span className="text-blue-500 italic">LOGIN</span></h1>
+        
+        <button onClick={loginWithGoogle} className="w-full h-16 bg-white text-black rounded-2xl font-black uppercase italic flex items-center justify-center gap-3 active:scale-95 transition-all">
+          <Chrome size={20} /> Entrar con Google
         </button>
 
-        {error && (
-          <div className="flex items-center gap-2 text-red-500 text-[10px] font-bold justify-center bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-            <AlertTriangle size={14} /> {error}
-          </div>
-        )}
+        <div className="flex items-center gap-4 text-zinc-600">
+          <div className="h-px bg-zinc-800 flex-1"></div>
+          <span className="text-[10px] font-bold uppercase italic">o con tu email</span>
+          <div className="h-px bg-zinc-800 flex-1"></div>
+        </div>
 
-        <p className="text-[9px] text-zinc-600 uppercase font-black tracking-widest leading-loose">
-          Al acceder aceptas que compartiremos <br/> tu ubicación para mostrarte promos reales [cite: 2025-12-24]
-        </p>
+        <form onSubmit={handleEmailLogin} className="space-y-4">
+          <input type="email" placeholder="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-16 bg-zinc-800/50 rounded-2xl px-6 font-bold outline-none border border-white/5 focus:border-blue-500 transition-all" />
+          <input type="password" placeholder="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full h-16 bg-zinc-800/50 rounded-2xl px-6 font-bold outline-none border border-white/5 focus:border-blue-500 transition-all" />
+          <button type="submit" disabled={loading} className="w-full h-16 bg-blue-600 rounded-2xl font-black uppercase italic active:scale-95 transition-all flex items-center justify-center gap-2">
+            {loading ? <Loader2 className="animate-spin" /> : "ENTRAR"}
+          </button>
+        </form>
+
+        <button onClick={() => router.push("/perfil")} className="w-full text-zinc-500 text-[10px] font-black uppercase italic flex items-center justify-center gap-2 pt-4">
+          <ArrowLeft size={12} /> Volver
+        </button>
       </div>
     </div>
   );

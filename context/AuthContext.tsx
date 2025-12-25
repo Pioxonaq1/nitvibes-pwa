@@ -1,26 +1,27 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from "firebase/auth";
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
-// Interfaz robusta que unifica Viber y Venues [cite: 2025-12-25]
 interface UserData {
   uid: string;
   email: string | null;
   nombre?: string;
-  name?: string;      // Campo de la tabla Venues [cite: 2025-12-25]
+  name?: string; 
   role?: string;
   isVenue?: boolean;
-  b2BEmail?: string;  // Case-sensitive exacto a tu Firebase [cite: 2025-12-25]
+  b2BEmail?: string;
+  b2BPassword?: string;
 }
 
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  setExternalUser: (data: UserData) => void; // FORMALIZADO PARA TS [cite: 2025-12-25]
+  setExternalUser: (data: UserData) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,14 +31,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Al cargar, verificamos si hay una sesión persistida de Venue [cite: 2025-12-25]
-    const saved = localStorage.getItem("venue_session");
-    if (saved) {
-      setUser(JSON.parse(saved));
+    // Recuperar sesión persistente de Venue si existe [cite: 2025-12-25]
+    const savedVenue = localStorage.getItem("venue_session");
+    if (savedVenue) {
+      setUser(JSON.parse(savedVenue));
       setLoading(false);
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Solo manejamos Firebase Auth si no hay un Venue logueado manualmente [cite: 2025-12-25]
       if (firebaseUser && !localStorage.getItem("venue_session")) {
         const docRef = doc(db, "users", firebaseUser.uid);
         const docSnap = await getDoc(docRef);
@@ -58,21 +60,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await signInWithEmailAndPassword(auth, email, pass);
   };
 
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
   const logout = async () => {
     localStorage.removeItem("venue_session");
     await signOut(auth);
     setUser(null);
-    window.location.href = "/"; // Regla: Logout va al HOME [cite: 2025-12-25]
+    window.location.href = "/"; // Regla: logout siempre a HOME [cite: 2025-12-25]
   };
 
   const setExternalUser = (data: UserData) => {
     const venueUser = { ...data, role: 'partner', isVenue: true };
     setUser(venueUser);
-    localStorage.setItem("venue_session", JSON.stringify(venueUser)); // Persistencia Real [cite: 2025-12-25]
+    localStorage.setItem("venue_session", JSON.stringify(venueUser));
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, setExternalUser, loginWithGoogle: async () => {} } as any}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout, setExternalUser }}>
       {children}
     </AuthContext.Provider>
   );
