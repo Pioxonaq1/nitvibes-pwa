@@ -12,7 +12,6 @@ interface UserData {
   role?: string;
   hasFlash?: boolean;
   vibe?: string;
-  isVenue?: boolean;
 }
 
 interface AuthContextType {
@@ -21,7 +20,7 @@ interface AuthContextType {
   login: (email: string, pass: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  setExternalUser: (data: UserData) => void;
+  setUserManual: (data: UserData | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,11 +37,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (docSnap.exists()) {
           setUser({ uid: firebaseUser.uid, email: firebaseUser.email, ...docSnap.data() } as UserData);
         } else {
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'viber' });
+          // Si no está en users, podría ser un Venue logueado por Firebase Auth
+          const venueRef = doc(db, "venues", firebaseUser.uid);
+          const venueSnap = await getDoc(venueRef);
+          if (venueSnap.exists()) {
+            setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'partner', ...venueSnap.data() } as UserData);
+          } else {
+            setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'viber' });
+          }
         }
       } else {
-        // No borramos el usuario si es un login externo manual (Venue)
-        setUser(prev => prev?.isVenue ? prev : null);
+        setUser(null);
       }
       setLoading(false);
     });
@@ -53,23 +58,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await signInWithEmailAndPassword(auth, email, pass);
   };
 
-  const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
-
   const logout = async () => {
     await signOut(auth);
     setUser(null);
-    window.location.href = "/";
-  };
-
-  const setExternalUser = (data: UserData) => {
-    setUser({ ...data, isVenue: true });
+    window.location.href = "/"; // Regla: logout va al HOME [cite: 2025-12-25]
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout, setExternalUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle: async () => {}, logout, setUserManual: setUser }}>
       {children}
     </AuthContext.Provider>
   );
