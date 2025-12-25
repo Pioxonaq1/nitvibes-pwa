@@ -1,100 +1,62 @@
+
 "use client";
 
-import { useEffect, useState } from "react";
+import React from "react";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-
-// Componentes
-import FlashPromoList from "@/components/FlashPromoList"; // Ya lo tenías
-import UGCVibesList from "@/components/UGCVibesList"; // El nuevo componente
+import { LogOut, Zap, User, Plus } from "lucide-react";
 
 export default function ViberDashboard() {
+  const { user, logout } = useAuth();
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  // 1. Protección de Ruta
-  useEffect(() => {
-    const unsub = auth.onAuthStateChanged((u) => {
-      if (!u || u.isAnonymous) {
-        router.push("/login"); // Si no es viber registrado, fuera
-      } else {
-        setUser(u);
-        setLoading(false);
-      }
-    });
-    return () => unsub();
-  }, [router]);
-
-  // 2. Función Logout (Específica para este panel)
   const handleLogout = async () => {
-    await signOut(auth);
-    sessionStorage.clear();
-    router.push("/login");
+    await logout();
+    router.push("/"); // 2) Al cerrar sesión debe dirigir al home
   };
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-purple-500"></div></div>;
-
   return (
-    <div className="min-h-screen bg-black text-white p-6 pb-28 font-sans">
-      
-      {/* HEADER DASHBOARD */}
-      <header className="flex justify-between items-center mb-8 pt-4">
+    <div className="min-h-screen bg-black text-white p-6 pb-24">
+      {/* Header del Panel */}
+      <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-2xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-            VIBER <span className="text-white not-italic">HUB</span>
+          <h1 className="text-2xl font-black italic tracking-tighter uppercase text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+            PANEL VIBER
           </h1>
-          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">
-            {user?.email?.split('@')[0]}
-          </p>
+          {/* 1) Se borra StageLink y se cambia Viber Hub */}
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">User Console</p>
         </div>
         <button 
           onClick={handleLogout}
-          className="text-[10px] font-bold bg-red-900/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-full hover:bg-red-900/40 transition-colors"
+          className="bg-red-500/10 border border-red-500/50 px-4 py-2 rounded-full text-[10px] font-black text-red-500 uppercase italic hover:bg-red-500 hover:text-white transition-all"
         >
-          CERRAR SESIÓN
+          Cerrar Sesión
         </button>
-      </header>
+      </div>
 
-      <main className="space-y-8">
-        
-        {/* SECCIÓN 1: ACCIONES FLASH (Lo más importante) */}
+      {/* Secciones de Promos y Vibes (Mantenemos estructura visual de tu adjunto) */}
+      <div className="space-y-8">
         <section>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl">⚡</span>
-            <h2 className="font-bold text-lg text-white">Flash Actions Activas</h2>
+          <h2 className="flex items-center gap-2 text-xs font-black uppercase italic mb-4 text-yellow-400">
+            <Zap size={14} fill="currentColor" /> Flash Actions Activas
+          </h2>
+          <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/5 rounded-3xl p-6 text-center">
+            <p className="text-gray-600 text-[10px] font-bold uppercase">No hay acciones flash en tu zona ahora mismo</p>
           </div>
-          {/* Tu componente existente que busca promos por GPS */}
-          <FlashPromoList />
         </section>
 
-        {/* SECCIÓN 2: MIS VIBES (UGC Creado por mí) */}
         <section>
-          <div className="flex justify-between items-end mb-4">
-             <div className="flex items-center gap-2">
-                <span className="text-xl">👤</span>
-                <h2 className="font-bold text-lg text-white">Mis Vibes</h2>
-             </div>
-             <button className="text-[10px] bg-white text-black px-3 py-1 rounded-full font-bold hover:bg-gray-200">
-               + CREAR
+          <h2 className="flex items-center gap-2 text-xs font-black uppercase italic mb-4">
+            <User size={14} /> Mis Vibes
+          </h2>
+          <div className="bg-zinc-900/30 border border-dashed border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center gap-4">
+             <p className="text-gray-500 text-[10px] font-bold uppercase">Aún no has publicado ningún Vibe</p>
+             <button className="bg-white text-black px-6 py-2 rounded-full text-[10px] font-black uppercase flex items-center gap-2">
+               <Plus size={14} /> Crear
              </button>
           </div>
-          {/* Lista filtrada por mi ID */}
-          <UGCVibesList userId={user.uid} />
         </section>
-
-        {/* SECCIÓN 3: COMUNIDAD (UGC de otros) */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl">🌍</span>
-            <h2 className="font-bold text-lg text-white">Nuevos Vibes (Comunidad)</h2>
-          </div>
-          {/* Lista filtrada excluyendo mi ID */}
-          <UGCVibesList excludeUserId={user.email} />
-        </section>
-
-      </main>
+      </div>
     </div>
   );
 }
