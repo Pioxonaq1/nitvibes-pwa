@@ -1,15 +1,14 @@
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
-// Interfaz robusta que acepta campos de Viber y Venues [cite: 2025-12-25]
 interface UserData {
   uid: string;
   email: string | null;
   nombre?: string;
-  name?: string;     // Nombre de la tabla Venues [cite: 2025-12-25]
+  name?: string;
   role?: string;
   hasFlash?: boolean;
   vibe?: string;
@@ -18,6 +17,7 @@ interface UserData {
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
+  login: (email: string, pass: string) => Promise<void>; // Restaurado para GOV/TEAM [cite: 2025-12-25]
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   setExternalUser: (data: UserData) => void; 
@@ -47,6 +47,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, []);
 
+  const login = async (email: string, pass: string) => {
+    await signInWithEmailAndPassword(auth, email, pass);
+  };
+
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
@@ -55,7 +59,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     await signOut(auth);
     setUser(null);
-    window.location.href = "/"; // Regla: logout manda a HOME [cite: 2025-12-25]
+    window.location.href = "/";
   };
 
   const setExternalUser = (data: UserData) => {
@@ -63,7 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithGoogle, logout, setExternalUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout, setExternalUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -71,6 +75,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) throw new Error("useAuth debe usarse dentro de AuthProvider");
+  if (context === undefined) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };
