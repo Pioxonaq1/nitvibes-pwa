@@ -83,12 +83,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 2. Funciones de Autenticación
 
-  // Login con Email y Password
   const login = async (email: string, pass: string) => {
     await signInWithEmailAndPassword(auth, email, pass);
   };
 
-  // Registro manual de Viber (B2C)
   const signup = async (email: string, pass: string) => {
     const res = await createUserWithEmailAndPassword(auth, email, pass);
     await setDoc(doc(db, "users", res.user.uid), {
@@ -99,7 +97,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  // Acceso con Google para Vibers
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -123,11 +120,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Logout: Desconecta sesión y devuelve al estado anónimo
   const logout = async () => {
     await signOut(auth);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, loginWithGoogle }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
