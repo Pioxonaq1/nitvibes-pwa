@@ -9,7 +9,6 @@ import { doc, getDoc } from "firebase/firestore";
 
 export default function VenueLoginPage() {
   const router = useRouter();
-  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,21 +19,29 @@ export default function VenueLoginPage() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const loggedUser = userCredential.user;
+      const user = userCredential.user;
 
-      // Verificar el rol en Firestore antes de permitir el acceso [cite: 2021-12-21]
-      const docRef = doc(db, "users", loggedUser.uid);
-      const docSnap = await getDoc(docRef);
+      // REGLA: Verificar que el ID existe en la colección de venues [cite: 2025-12-25]
+      const venueRef = doc(db, "venues", user.uid);
+      const venueSnap = await getDoc(venueRef);
 
-      if (docSnap.exists() && docSnap.data().role === "partner") {
+      if (venueSnap.exists()) {
         router.push("/partner/venues/dashboard");
       } else {
-        alert("Acceso denegado: Esta cuenta no tiene permisos de Partner/Venue.");
-        setLoading(false);
+        // Si no está en venues, comprobamos si el usuario tiene el rol partner asignado [cite: 2025-12-21]
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists() && userSnap.data().role === "partner") {
+          router.push("/partner/venues/dashboard");
+        } else {
+          alert("Acceso denegado: Este perfil no está registrado como Venue.");
+          setLoading(false);
+        }
       }
     } catch (error) {
-      console.error("Error en login Venue", error);
-      alert("Credenciales incorrectas o error de conexión.");
+      console.error("Error Login:", error);
+      alert("Error de acceso. Por favor, verifica tus datos.");
       setLoading(false);
     }
   };
@@ -44,7 +51,7 @@ export default function VenueLoginPage() {
       <div className="w-full max-w-md bg-zinc-900/50 border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
         
         <div className="flex justify-center mb-6">
-          <div className="bg-pink-600 p-4 rounded-full shadow-lg shadow-pink-500/20 text-white animate-pulse">
+          <div className="bg-pink-600 p-4 rounded-full shadow-lg shadow-pink-500/20 text-white">
             <Store size={28} />
           </div>
         </div>
@@ -53,13 +60,13 @@ export default function VenueLoginPage() {
           VENUES <span className="text-pink-500 italic">LOGIN</span>
         </h1>
         <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center mb-8 italic">
-          Bares, Clubes y Discotecas
+          Acceso para locales registrados
         </p>
 
         <form onSubmit={handleLogin} className="space-y-4">
           <input 
             type="email" 
-            placeholder="apolo@test.com" 
+            placeholder="email@local.com" 
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -83,9 +90,9 @@ export default function VenueLoginPage() {
         </form>
 
         <div className="mt-10 pt-6 border-t border-white/5 text-center">
-          <p className="text-[10px] font-black uppercase italic text-zinc-500 mb-2 tracking-tighter">¿Aún no eres Partner?</p>
-          <button onClick={() => router.push("/contact/nitvibes")} className="text-xs font-black uppercase italic text-pink-500 hover:text-white transition-colors animate-bounce">
-            Date de alta, contacta con NITVIBES
+          <p className="text-[10px] font-black uppercase italic text-zinc-500 mb-2">¿Quieres registrar tu local?</p>
+          <button onClick={() => router.push("/contact/nitvibes")} className="text-xs font-black uppercase italic text-pink-500 hover:text-white transition-colors">
+            Contacta con NITVIBES
           </button>
         </div>
 
