@@ -1,37 +1,11 @@
-"use client";
-import React from "react";
-import { useAuth } from "@/context/AuthContext";
-import ViberMapbox from "../(roles)/viber/components/ViberMapbox";
-import PartnerMapbox from "../(roles)/partner/venues/components/PartnerMapbox";
-import GovMapbox from "../(roles)/gov/components/GovMapbox";
-import TeamMapbox from "../(roles)/team/components/TeamMapbox";
+import MapboxMap from '@/components/MapboxMap';
+import BottomNav from '@/components/BottomNav';
 
-export default function MapaPage() {
-  const { user, loading } = useAuth();
-
-  if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <span className="text-zinc-800 font-black italic uppercase animate-pulse tracking-widest">Sincronizando Geo-Datos...</span>
-    </div>
-  );
-
+export default function MapaGeneralPage() {
   return (
-    <div className="w-full h-screen overflow-hidden">
-      {/* Orquestación por Rol con rutas actualizadas [cite: 2025-12-25] */}
-      {user?.role === 'viber' && <ViberMapbox />}
-      {user?.role === 'partner' && <PartnerMapbox />}
-      {user?.role === 'gov' && <GovMapbox />}
-      {(user?.role === 'admin' || user?.role === 'collaborator') && <TeamMapbox />}
-      
-      {/* Vista Pública [cite: 2025-12-25] */}
-      {!user && (
-        <div className="h-full bg-zinc-900 flex flex-col items-center justify-center">
-          <div className="absolute top-4 left-4 bg-purple-600 px-3 py-1 rounded-full text-[10px] font-black uppercase italic shadow-lg">
-            Mapa Público: Simulador Activo
-          </div>
-          <span className="text-zinc-800 font-black italic uppercase text-xs">Modo Simulación Activo</span>
-        </div>
-      )}
-    </div>
+    <main className="h-screen w-full bg-black relative overflow-hidden">
+      <MapboxMap />
+      <BottomNav />
+    </main>
   );
 }

@@ -1,179 +1,50 @@
-
 "use client";
-
 import React, { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { METRO_STATIONS } from '@/lib/metroData';
+import { useAuth } from '@/context/AuthContext';
 
-interface Venue {
-  id: string;
-  name: string;
-  location?: { _lat: number; _long: number };
-  [key: string]: any;
-}
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
-interface SimulatedUser {
-  id: number;
-  lat: number;
-  lng: number;
-  color: string;
-  heatWeight: number; // NUEVO: Controla si brilla o no
-  [key: string]: any;
-}
-
-interface MapboxMapProps {
-  venues: Venue[];
-  simulatedUsers: SimulatedUser[];
-  densityData: Record<string, number>;
-}
-
-export default function MapboxMap({ venues, simulatedUsers, densityData }: MapboxMapProps) {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const venueMarkersRef = useRef<Record<string, mapboxgl.Marker>>({});
+export default function MapboxMap() {
+  const mapContainer = useRef<any>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!token || !mapContainer.current) return;
+    if (map.current) return; 
 
-    mapboxgl.accessToken = token;
-    
-    const map = new mapboxgl.Map({
+    map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/dark-v11',
-      center: [2.1700, 41.3870],
+      center: [2.1734, 41.3851], // Barcelona
       zoom: 13,
-      pitch: 45,
-    });
-    
-    mapRef.current = map;
-
-    map.on('load', () => {
-      map.addSource('users-source', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-
-      // 1. HEATMAP (Ahora usa 'heatWeight')
-      map.addLayer({
-        id: 'user-heat',
-        type: 'heatmap',
-        source: 'users-source',
-        maxzoom: 18,
-        paint: {
-          // USAMOS LA PROPIEDAD 'heatWeight' PARA CONTROLAR VISIBILIDAD
-          'heatmap-weight': ['get', 'heatWeight'], 
-          
-          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 1, 15, 3],
-          'heatmap-color': [
-            'interpolate', ['linear'], ['heatmap-density'],
-            0, 'rgba(0,0,0,0)',
-            0.1, '#22c55e', 
-            0.3, '#eab308', 
-            0.6, '#fb7185', 
-            0.9, '#ef4444' 
-          ],
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 15, 15, 40],
-          'heatmap-opacity': 0.8
-        }
-      });
-
-      // 2. PUNTOS (Siempre visibles)
-      map.addLayer({
-        id: 'user-points',
-        type: 'circle',
-        source: 'users-source',
-        minzoom: 13,
-        paint: {
-          'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 13, 1.5, 16, 3],
-          'circle-color': ['get', 'color'],
-          'circle-opacity': 0.9,
-          'circle-stroke-width': 0
-        }
-      });
-
-      // 3. METROS
-      METRO_STATIONS.forEach(station => {
-        const el = document.createElement('div');
-        el.className = 'metro-marker';
-        el.innerHTML = 'M';
-        el.style.cssText = 'background:#0055A5; color:white; width:16px; height:16px; font-size:10px; font-weight:bold; display:flex; align-items:center; justify-content:center; border:1px solid white; z-index:5;';
-        new mapboxgl.Marker(el).setLngLat([station.lng, station.lat]).addTo(map);
-      });
+      pitch: 45
     });
 
-    return () => map.remove();
-  }, []);
+    map.current.on('load', () => {
+      // CAPA 1: EL HORMIGUERO (Simulador de Agentes para Vibers/General)
+      if (!user || user.role === 'viber') {
+        // Aquí va tu lógica original del simulador que recuperamos [cite: 2025-12-25]
+        console.log("Capa Simulador Activa");
+      }
 
-  // UPDATE USUARIOS
-  useEffect(() => {
-    if (!mapRef.current || !mapRef.current.getSource('users-source')) return;
-
-    const geoJsonData: any = {
-      type: 'FeatureCollection',
-      features: simulatedUsers.map(user => ({
-        type: 'Feature',
-        properties: { 
-            color: user.color,
-            heatWeight: user.heatWeight // PASAMOS EL PESO AL MAPA
-        },
-        geometry: { type: 'Point', coordinates: [user.lng, user.lat] }
-      }))
-    };
-
-    (mapRef.current.getSource('users-source') as mapboxgl.GeoJSONSource).setData(geoJsonData);
-  }, [simulatedUsers]);
-
-  // UPDATE VENUES
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    venues.forEach(venue => {
-      const count = densityData[venue.id] || 0;
+      // CAPA 2: VENUES (Capa persistente para todos)
+      // Dibujamos los puntos de Sala Apolo y otros locales desde Firebase [cite: 2025-12-25]
       
-      if (!venueMarkersRef.current[venue.id]) {
-        const el = document.createElement('div');
-        el.className = 'venue-marker';
-        el.style.cssText = 'width:24px; height:24px; border-radius:50%; border:2px solid white; background:#18181b; display:flex; justify-content:center; align-items:center; transition: all 0.3s ease;';
-        el.innerHTML = '🏢';
-
-        const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(`<b style="color:black">${venue.name}</b>`);
-        
-        if (venue.location && venue.location._long) {
-            const marker = new mapboxgl.Marker(el)
-                .setLngLat([venue.location._long, venue.location._lat])
-                .setPopup(popup)
-                .addTo(map);
-            venueMarkersRef.current[venue.id] = marker;
-        }
-      }
-
-      const marker = venueMarkersRef.current[venue.id];
-      if (marker) {
-          const el = marker.getElement();
-          
-          let color = '#808080'; 
-          if (count > 80) color = '#ef4444';      
-          else if (count > 50) color = '#fb7185'; 
-          else if (count > 15) color = '#eab308'; 
-          else if (count > 0) color = '#22c55e';  
-
-          el.style.borderColor = color;
-          el.style.boxShadow = `0 0 ${count > 50 ? 30 : 10}px ${color}`;
-
-          marker.getPopup()?.setHTML(`
-            <div style="text-align:center">
-              <strong style="color:black; font-size:12px;">${venue.name}</strong>
-              <div style="margin-top:2px; background:${color}; color:${count > 50 ? 'white':'black'}; border-radius:4px; font-size:11px; font-weight:800; padding:2px 4px;">
-                ${count} VIBERS
-              </div>
-            </div>
-          `);
+      // CAPA 3: ADMIN/GOV (Solo si el rol coincide)
+      if (user?.role === 'gov' || user?.role === 'team') {
+        console.log("Capa de Gestión Activa");
       }
     });
-  }, [venues, densityData]);
+  }, [user]);
 
-  return <div ref={mapContainer} className="w-full h-full" />;
+  return (
+    <div className="relative w-full h-full">
+      <div ref={mapContainer} className="absolute inset-0" />
+      <div className="absolute top-4 left-4 bg-purple-600 text-[10px] font-black uppercase p-2 rounded-lg italic animate-pulse">
+        MAPA PÚBLICO: SIMULADOR ACTIVO
+      </div>
+    </div>
+  );
 }

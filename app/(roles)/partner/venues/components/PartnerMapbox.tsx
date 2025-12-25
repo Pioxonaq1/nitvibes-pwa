@@ -1,13 +1,30 @@
 "use client";
-import React from "react";
+import React, { useEffect, useRef } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { useAuth } from '@/context/AuthContext';
+
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
 export default function PartnerMapbox() {
-  return (
-    <div className="w-full h-full bg-zinc-900 relative">
-      {/* Capa de gestión para locales [cite: 2025-12-25] */}
-      <div className="flex items-center justify-center h-full text-zinc-800 font-black uppercase italic text-xs">
-        Mapbox Venue Layer Active
-      </div>
-    </div>
-  );
+  const mapContainer = useRef<any>(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    const map = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [2.1700, 41.3750], // Centrado en Apolo (Poble Sec) [cite: 2025-12-25]
+      zoom: 15,
+      interactive: false // Mapa estático decorativo para el panel
+    });
+
+    new mapboxgl.Marker({ color: '#ec4899' })
+      .setLngLat([2.1700, 41.3750])
+      .addTo(map);
+
+    return () => map.remove();
+  }, []);
+
+  return <div ref={mapContainer} className="w-full h-full" />;
 }
