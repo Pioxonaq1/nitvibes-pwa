@@ -1,107 +1,83 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import React from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
-import NearbyUsersCounter from "@/components/NearbyUsersCounter";
-import { ROUTES } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
-import { LogOut, Settings, Bell, QrCode, Store } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { Store, MapPin, Zap, Users, BarChart3, Settings, LogOut } from "lucide-react";
+import PartnerMapbox from "../components/PartnerMapbox";
 
-export default function BusinessDashboard() {
+export default function VenueDashboard() {
   const { user, logout } = useAuth();
-  const router = useRouter();
-  const [venue, setVenue] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchVenue = async () => {
-      if (user?.email) {
-        try {
-          const q = query(collection(db, "Venues"), where("b2b_email", "==", user.email));
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-            const data = querySnapshot.docs[0].data();
-            const loc = data.location ? {
-                latitude: data.location.latitude || data.location._lat,
-                longitude: data.location.longitude || data.location._long
-            } : { latitude: 41.3851, longitude: 2.1911 };
-
-            setVenue({ ...data, id: querySnapshot.docs[0].id, location: loc });
-          }
-        } catch (error) {
-          console.error("Error cargando Venue:", error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    fetchVenue();
-  }, [user]);
-
-  const handleLogout = async () => {
-    await logout();
-    router.push(ROUTES.HOME);
-  };
-
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Cargando datos del local...</div>;
+  const stats = [
+    { label: "Vibes Hoy", value: "128", icon: Users, color: "text-blue-400" },
+    { label: "Flash Activas", value: "3", icon: Zap, color: "text-yellow-500" },
+    { label: "Alcance", value: "1.2k", icon: BarChart3, color: "text-pink-500" },
+  ];
 
   return (
-    <div className="min-h-screen bg-black p-4 pb-24">
-      <header className="flex justify-between items-center mb-8 pt-4 border-b border-gray-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 truncate max-w-[200px]">
-            {venue?.name || "Tu Negocio"}
-          </h1>
-          <div className="flex items-center gap-1 text-gray-400 text-xs uppercase tracking-widest mt-1">
-             <Store size={12} /> <span>Partner Dashboard</span>
+    <div className="min-h-screen bg-black text-white p-6 pb-32 flex flex-col items-center">
+      <div className="w-full max-w-4xl space-y-6">
+        
+        {/* HEADER UNIFICADO [cite: 2025-12-25] */}
+        <div className="flex justify-between items-center bg-zinc-900/50 p-6 rounded-[2rem] border border-white/5 shadow-2xl">
+          <div>
+            <h1 className="text-2xl font-black italic uppercase tracking-tighter">
+              PANEL <span className="text-pink-500">VENUE</span>
+            </h1>
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">
+              {user?.nombre || "Cargando Local..."}
+            </p>
+          </div>
+          <button onClick={logout} className="p-3 bg-zinc-800 rounded-full text-zinc-500 hover:text-red-500 transition-all">
+            <LogOut size={20} />
+          </button>
+        </div>
+
+        {/* STATS RÁPIDAS (Los componentes del adjunto) [cite: 2025-12-25] */}
+        <div className="grid grid-cols-3 gap-3">
+          {stats.map((stat) => (
+            <div key={stat.label} className="bg-zinc-900/50 border border-white/5 p-4 rounded-2xl flex flex-col items-center gap-2">
+              <stat.icon size={20} className={stat.color} />
+              <div className="text-center">
+                <p className="text-lg font-black leading-none">{stat.value}</p>
+                <p className="text-[7px] font-black uppercase text-zinc-500 mt-1">{stat.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* MAPA DE UBICACIÓN (Migrado de Partner) [cite: 2025-12-25] */}
+        <div className="bg-zinc-900/50 border border-white/5 rounded-[2.5rem] overflow-hidden h-64 relative">
+          <PartnerMapbox />
+          <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-2">
+            <MapPin size={12} className="text-pink-500" />
+            <span className="text-[9px] font-black uppercase italic">Ubicación del Local</span>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-400 hover:bg-red-900/20">
-            <LogOut size={20} />
-          </Button>
-        </div>
-      </header>
 
-      <main className="space-y-6 max-w-md mx-auto">
-        {venue && (
-            <div className="flex items-center gap-4 bg-[#111] p-3 rounded-xl border border-gray-800">
-                <div className={`w-3 h-3 rounded-full ${venue.isOpen ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-red-500'}`}></div>
-                <div className="flex-1">
-                    <p className="text-sm font-bold text-white">{venue.isOpen ? 'ABIERTO' : 'CERRADO'}</p>
-                    <p className="text-xs text-gray-500 truncate">{venue.vibe || 'Sin vibe definido'}</p>
-                </div>
-                <div className="text-right">
-                    <span className="text-xs text-gray-400 block">Aforo</span>
-                    <span className="text-lg font-mono font-bold text-white">{venue.occupancy || '0'}%</span>
-                </div>
+        {/* ACCIONES DE GESTIÓN [cite: 2025-12-25] */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button className="h-20 bg-gradient-to-r from-pink-600 to-purple-700 rounded-2xl flex items-center justify-between px-6 shadow-lg active:scale-95 transition-all">
+            <div className="flex items-center gap-4">
+              <Zap size={24} />
+              <div className="text-left">
+                <p className="text-sm font-black uppercase italic">Lanzar Flash Action</p>
+                <p className="text-[9px] opacity-70 font-bold uppercase">Atrae vibers ahora mismo</p>
+              </div>
             </div>
-        )}
+          </button>
 
-        <section>
-          {venue?.location && (
-              <NearbyUsersCounter 
-                venueLat={venue.location.latitude} 
-                venueLng={venue.location.longitude} 
-              />
-          )}
-        </section>
+          <button className="h-20 bg-zinc-900 border border-white/10 rounded-2xl flex items-center justify-between px-6 active:scale-95 transition-all">
+            <div className="flex items-center gap-4">
+              <Settings size={24} className="text-zinc-400" />
+              <div className="text-left">
+                <p className="text-sm font-black uppercase italic text-white">Editar Perfil</p>
+                <p className="text-[9px] text-zinc-500 font-bold uppercase">Horarios, fotos y música</p>
+              </div>
+            </div>
+          </button>
+        </div>
 
-        <section className="grid grid-cols-2 gap-4">
-           <div className="bg-[#111] border border-gray-800 p-4 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-[#222] transition-colors cursor-pointer">
-              <QrCode className="text-purple-500 w-6 h-6" />
-              <span className="text-sm font-bold text-gray-200">Escanear QR</span>
-           </div>
-           <div className="bg-[#111] border border-gray-800 p-4 rounded-xl flex flex-col items-center justify-center gap-2 hover:bg-[#222] transition-colors cursor-pointer">
-              <Settings className="text-gray-400 w-6 h-6" />
-              <span className="text-sm font-bold text-gray-200">Ajustes</span>
-           </div>
-        </section>
-      </main>
+      </div>
     </div>
   );
 }
