@@ -9,29 +9,31 @@ import TuVibeSelector from "../components/TuVibeSelector";
 
 export default function ViberDashboard() {
   const { user, logout } = useAuth();
-  // Estado para controlar la visibilidad del selector de Mood [cite: 2025-12-25]
   const [isVibeOpen, setIsVibeOpen] = useState(false);
+  const [activeVibes, setActiveVibes] = useState<string[]>([]);
+  const [isMoodEnabled, setIsMoodEnabled] = useState(false);
+
+  const toggleVibe = (id: string) => {
+    setActiveVibes(prev => prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]);
+  };
 
   return (
     <main className="min-h-screen bg-black text-white p-6 pb-32">
       <ViberHeader onLogout={logout} />
-
-      {/* Pasamos la función para abrir el componente al componente MainActions [cite: 2025-12-25] */}
-      <MainActions onOpenVibe={() => setIsVibeOpen(true)} />
-
+      <MainActions 
+        onOpenVibe={() => setIsVibeOpen(true)} 
+        isMoodActive={isMoodEnabled && activeVibes.length > 0} 
+      />
       <FlashSlider />
-
       <SocialModule />
-      
-      {/* Renderizado condicional del Selector [cite: 2025-12-25] */}
       <TuVibeSelector 
         isOpen={isVibeOpen} 
-        onClose={() => setIsVibeOpen(false)} 
+        onClose={() => setIsVibeOpen(false)}
+        activeVibes={activeVibes}
+        isMoodEnabled={isMoodEnabled}
+        onToggleVibe={toggleVibe}
+        onToggleMood={setIsMoodEnabled}
       />
-      
-      <div className="mt-8 opacity-20 text-[8px] font-black uppercase tracking-[0.5em] text-center">
-        Konnektwerk Engine v1.1
-      </div>
     </main>
   );
 }
