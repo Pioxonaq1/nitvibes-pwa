@@ -1,62 +1,124 @@
-
 "use client";
-import { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
-import { UserCircle, ArrowRight, Loader2 } from "lucide-react";
 
-export default function ViberLogin() {
-  const { login, loginWithGoogle } = useAuth();
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { Chrome, Mail, Lock, AlertTriangle, Loader2 } from "lucide-react";
+import Link from "next/link";
+
+export default function ViberLoginPage() {
   const router = useRouter();
+  const { login, loginWithGoogle } = useAuth();
+  
   const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await loginWithGoogle();
+      // Tras login exitoso con Google, redirigimos al Panel según tus notas
+      router.push("/viber/dashboard");
+    } catch (err: any) {
+      console.error(err);
+      setError("Error al acceder con Google. Inténtalo de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
-      await login(email, pass);
+      await login(email, password);
       router.push("/viber/dashboard");
-    } catch (err) { setError("Credenciales incorrectas"); } finally { setLoading(false); }
-  };
-
-  const handleGoogle = async () => {
-    try {
-      await loginWithGoogle();
-      router.push("/viber/dashboard");
-    } catch (err) { setError("Error con Google"); }
+    } catch (err: any) {
+      setError("Credenciales incorrectas o usuario no encontrado.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-white">
-      <div className="w-full max-w-sm">
-        <div className="flex justify-center mb-6 text-blue-500"><UserCircle size={48} /></div>
-        <h1 className="text-3xl font-black italic text-center mb-2 uppercase tracking-tighter">Viber Access</h1>
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 pb-24">
+      <div className="w-full max-w-sm space-y-8">
         
-        {/* BOTÓN GOOGLE */}
-        <button onClick={handleGoogle} className="w-full bg-white text-black p-4 rounded-xl font-bold uppercase flex items-center justify-center gap-3 mb-6 hover:bg-gray-200 transition-colors">
-          <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-.61-.06-1.1-.15-1.81z"/></svg>
-          Entrar con Google
-        </button>
-
-        <div className="flex items-center gap-4 mb-6">
-          <div className="h-px bg-white/10 flex-1"></div>
-          <span className="text-[10px] uppercase font-bold text-gray-500">O usa tu email</span>
-          <div className="h-px bg-white/10 flex-1"></div>
+        <div className="text-center">
+          <div className="inline-flex p-4 bg-blue-500/10 rounded-full border border-blue-500/20 mb-4">
+             <Chrome size={32} className="text-blue-400" />
+          </div>
+          <h1 className="text-3xl font-black italic uppercase tracking-tighter">VIBER ACCESS</h1>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4 bg-zinc-900/50 p-8 rounded-[2rem] border border-white/10">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none" placeholder="Email" required />
-          <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none" placeholder="Contraseña" required />
-          {error && <p className="text-red-500 text-xs text-center font-bold">{error}</p>}
-          <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-blue-600 to-purple-600 p-4 rounded-xl font-black uppercase italic tracking-wider flex items-center justify-center gap-2">
-            {loading ? <Loader2 className="animate-spin" /> : "Entrar"}
+        {/* BOTÓN GOOGLE PRIORITARIO */}
+        <button 
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+        >
+          {loading ? <Loader2 className="animate-spin" /> : <><Chrome size={18} /> Entrar con Google</>}
+        </button>
+
+        <div className="flex items-center gap-4 py-2">
+            <div className="h-[1px] bg-white/10 flex-1"></div>
+            <span className="text-[10px] text-gray-600 font-bold uppercase">o usa tu email</span>
+            <div className="h-[1px] bg-white/10 flex-1"></div>
+        </div>
+
+        {/* FORMULARIO EMAIL */}
+        <form onSubmit={handleEmailLogin} className="space-y-4 bg-zinc-900/50 p-6 rounded-[2.5rem] border border-white/5">
+          <div className="space-y-1">
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+              <input 
+                type="email" 
+                placeholder="Email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-black border border-white/10 p-4 pl-12 rounded-2xl outline-none focus:border-purple-500 transition-all text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+              <input 
+                type="password" 
+                placeholder="Contraseña" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-black border border-white/10 p-4 pl-12 rounded-2xl outline-none focus:border-purple-500 transition-all text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 text-red-500 text-[10px] font-bold justify-center animate-pulse">
+              <AlertTriangle size={14} /> {error}
+            </div>
+          )}
+
+          <button 
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 py-4 rounded-2xl font-black uppercase italic tracking-wider shadow-lg active:scale-95 transition-all"
+          >
+            ENTRAR
           </button>
         </form>
-        <p onClick={() => router.push('/register')} className="text-center text-xs text-gray-500 mt-6 cursor-pointer hover:text-white">¿No tienes cuenta? <span className="text-blue-400 underline">Regístrate gratis</span></p>
+
+        <p className="text-center text-[10px] text-zinc-500 uppercase font-bold tracking-tight">
+          ¿No tienes cuenta? <Link href="/perfil" className="text-white underline">Regístrate gratis</Link>
+        </p>
+
       </div>
     </div>
   );
