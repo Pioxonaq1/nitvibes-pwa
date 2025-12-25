@@ -6,22 +6,21 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   createUserWithEmailAndPassword,
-  User as FirebaseUser,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  setPersistence,
+  browserSessionPersistence
 } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
-// Definición del tipo de Usuario con Rol
 type UserData = {
   uid: string;
   email: string | null;
-  role: string; // 'viber' | 'partner' | 'gov' | 'team'
+  role: string;
   nombre?: string;
 };
 
-// Interfaz que define qué funciones expone el contexto
 interface AuthContextType {
   user: UserData | null;
   loading: boolean;
@@ -32,12 +31,7 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  login: async () => {},
-  signup: async () => {},
-  logout: async () => {},
-  loginWithGoogle: async () => {},
+  user: null, loading: true, login: async () => {}, signup: async () => {}, logout: async () => {}, loginWithGoogle: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -46,30 +40,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 1. Escuchar cambios de sesión y recuperar Rol de Firestore
   useEffect(() => {
+    // Aplicar regla: Cerrar sesión al cerrar el navegador (Persistencia de Sesión)
+    setPersistence(auth, browserSessionPersistence);
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        try {
-          // Buscamos el rol en la colección 'users' para verificar permisos
-          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-          if (userDoc.exists()) {
-            setUser({
-              uid: currentUser.uid,
-              email: currentUser.email,
-              role: userDoc.data().role || 'viber',
-              nombre: userDoc.data().nombre
-            });
-          } else {
-            // Si el documento no existe en 'users', lo tratamos como Viber por defecto
-            setUser({
-              uid: currentUser.uid,
-              email: currentUser.email,
-              role: 'viber'
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching user role:", error);
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (userDoc.exists()) {
+          setUser({
+            uid: currentUser.uid,
+            email: currentUser.email,
+            role: userDoc.data().role || 'viber',
+            nombre: userDoc.data().nombre
+          });
+        } else {
           setUser({ uid: currentUser.uid, email: currentUser.email, role: 'viber' });
         }
       } else {
@@ -77,11 +62,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
-
-  // 2. Funciones de Autenticación
 
   const login = async (email: string, pass: string) => {
     await signInWithEmailAndPassword(auth, email, pass);
@@ -92,37 +74,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await setDoc(doc(db, "users", res.user.uid), {
       email: email.toLowerCase(),
       role: 'viber',
-      shareLocation: true, // Regla: Usuario registrado comparte ubicación
+      shareLocation: true,
       createdAt: new Date().toISOString()
     });
   };
 
   const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    try {
-      const res = await signInWithPopup(auth, provider);
-      const userDocRef = doc(db, "users", res.user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      // Si es la primera vez que entra con Google, creamos su perfil Viber
-      if (!userDoc.exists()) {
-        await setDoc(userDocRef, {
-          email: res.user.email?.toLowerCase(),
-          role: 'viber',
-          nombre: res.user.displayName,
-          shareLocation: true, // Regla: Compartir ubicación automáticamente
-          createdAt: new Date().toISOString()
-        });
-      }
-    } catch (error) {
-      console.error("Error in Google Login:", error);
-      throw error;
+    const res = await signInWithPopup(auth, provider);
+    const userDocRef = doc(db, "users", res.user.uid);
+    const userDoc = await getDoc(userDocRef);
+    if (!userDoc.exists()) {
+      await setDoc(userDocRef, {
+        email: res.user.email?.toLowerCase(),
+        role: 'viber',
+        nombre: res.user.displayName,
+        shareLocation: true,
+        createdAt: new Date().toISOString()
+      });
     }
   };
 
   const logout = async () => {
+    if (user) {
+      // Regla: Dejar de compartir ubicación al salir
+      try {
+        await updateDoc(doc(db, "users", user.uid), { shareLocation: false });
+      } catch (e) { console.error("Error updating location status on logout"); }
+    }
     await signOut(auth);
     setUser(null);
+    window.location.href = "/"; // Regla genérica: Salir lleva al Home
   };
 
   return (
