@@ -7,10 +7,19 @@ import VenueNav from "@/app/(roles)/partner/venues/components/navigation/VenueNa
 
 export default function BottomNav() {
   const { user, loading } = useAuth();
+
   if (loading) return null;
-  
-  if (user?.role === 'viber') return <ViberNav />;
-  if (user?.role === 'partner') return <VenueNav />;
-  
+
+  // Si el rol es Viber (Usuario estándar) [cite: 2025-12-25]
+  if (user?.role === 'viber') {
+    return <ViberNav />;
+  }
+
+  // Si el rol es Partner (Venues) [cite: 2025-12-21, 2025-12-25]
+  if (user?.role === 'partner') {
+    return <VenueNav />;
+  }
+
+  // Menú público para anónimos [cite: 2025-12-25]
   return <PublicNav />;
 }
