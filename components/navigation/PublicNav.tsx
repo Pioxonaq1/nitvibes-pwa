@@ -8,9 +8,9 @@ export default function PublicNav() {
   const pathname = usePathname();
   const navItems = [
     { label: "Home", icon: Home, path: "/" },
-    { label: "Mapa", icon: Map, path: "/mapa" }, // El del simulador [cite: 2025-12-25]
-    { label: "Vibes", icon: Sparkles, path: "/vibes" }, // Blog Sanity [cite: 2025-12-25]
-    { label: "Perfil", icon: User, path: "/perfil" },
+    { label: "Mapa", icon: Map, path: "/mapa" },
+    { label: "Vibes", icon: Sparkles, path: "/vibes" },
+    { label: "Perfil", icon: "/perfil" },
   ];
 
   return (
