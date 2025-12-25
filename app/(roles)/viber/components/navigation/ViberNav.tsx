@@ -9,16 +9,16 @@ export default function ViberNav() {
   
   const navItems = [
     { label: "Home", icon: Home, path: "/" },
-    { label: "Mapa", icon: Map, path: "/mapa" }, // El que corresponde al usuario Viber [cite: 2025-12-25]
-    { label: "Flash", icon: Zap, path: "/viber/flash-actions" }, // Todas en una lista [cite: 2025-12-25]
-    { label: "Panel", icon: LayoutDashboard, path: "/viber/dashboard" }, // Devuelve al Viber a su panel [cite: 2025-12-25]
+    { label: "Mapa", icon: Map, path: "/mapa" },
+    { label: "Flash", icon: Zap, path: "/viber/flash-actions" },
+    { label: "Panel", icon: LayoutDashboard, path: "/viber/dashboard" },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/5 pb-8 pt-4 px-8 z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-blue-500/20 pb-8 pt-4 px-8 z-50">
       <div className="flex justify-between items-center max-w-md mx-auto">
         {navItems.map((item) => {
-          const isActive = pathname === item.path;
+          const isActive = pathname === item.path || (item.label === "Panel" && pathname.includes("viber"));
           return (
             <Link
               key={item.label}
