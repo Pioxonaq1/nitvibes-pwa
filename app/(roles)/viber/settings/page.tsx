@@ -1,89 +1,59 @@
 "use client";
-
-import React, { useState, useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
-import { ArrowLeft, Save, User, Mail, Shield } from "lucide-react";
+import React from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { Settings, User, Bell, Shield, ArrowLeft, LogOut } from "lucide-react";
 
-export default function UserSettings() {
-  const { user } = useAuth();
+export default function ViberSettings() {
   const router = useRouter();
-  const [nombre, setNombre] = useState(user?.nombre || "");
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    setLoading(true);
-    try {
-      await updateDoc(doc(db, "users", user.uid), {
-        nombre: nombre
-      });
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { user, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 pb-24">
-      <button onClick={() => router.back()} className="flex items-center gap-2 text-zinc-500 mb-8 uppercase text-[10px] font-black italic">
-        <ArrowLeft size={16} /> Volver al Panel
-      </button>
-
-      <h1 className="text-2xl font-black italic uppercase mb-8">Mis Datos</h1>
-
-      <form onSubmit={handleSave} className="space-y-6">
-        <div className="bg-zinc-900/50 p-6 rounded-3xl border border-white/5 space-y-4">
-          <div>
-            <label className="flex items-center gap-2 text-[10px] font-black uppercase text-zinc-500 mb-2">
-              <User size={12} /> Nombre Público
-            </label>
-            <input 
-              type="text" 
-              value={nombre} 
-              onChange={(e) => setNombre(e.target.value)}
-              className="w-full bg-black border border-white/10 p-4 rounded-2xl outline-none focus:border-blue-500 transition-all font-bold"
-              placeholder="Tu nombre..."
-            />
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2 text-[10px] font-black uppercase text-zinc-500 mb-2">
-              <Mail size={12} /> Email (No editable)
-            </label>
-            <input 
-              type="text" 
-              value={user?.email || ""} 
-              disabled
-              className="w-full bg-black/50 border border-white/5 p-4 rounded-2xl text-zinc-600 font-bold"
-            />
-          </div>
-
-          <div>
-            <label className="flex items-center gap-2 text-[10px] font-black uppercase text-zinc-500 mb-2">
-              <Shield size={12} /> Rol de Acceso
-            </label>
-            <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl text-blue-400 text-xs font-black uppercase italic">
-              {user?.role}
-            </div>
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 pb-32">
+      <div className="w-full max-w-md bg-zinc-900/50 border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
+        
+        <div className="flex justify-center mb-6">
+          <div className="bg-gradient-to-br from-zinc-500 to-zinc-800 p-4 rounded-full shadow-lg">
+            <Settings size={28} className="text-white" />
           </div>
         </div>
 
+        <h1 className="text-3xl font-black italic uppercase tracking-tighter text-center mb-8">
+          AJUSTES <span className="text-blue-400">VIBER</span>
+        </h1>
+
+        <div className="space-y-3">
+          <button className="w-full h-16 bg-black border border-white/5 rounded-2xl px-6 flex items-center gap-4 active:scale-95 transition-all">
+            <User size={20} className="text-zinc-500" />
+            <span className="text-xs font-black uppercase italic">Editar Perfil</span>
+          </button>
+          
+          <button className="w-full h-16 bg-black border border-white/5 rounded-2xl px-6 flex items-center gap-4 active:scale-95 transition-all">
+            <Bell size={20} className="text-zinc-500" />
+            <span className="text-xs font-black uppercase italic">Notificaciones</span>
+          </button>
+
+          <button className="w-full h-16 bg-black border border-white/5 rounded-2xl px-6 flex items-center gap-4 active:scale-95 transition-all">
+            <Shield size={20} className="text-zinc-500" />
+            <span className="text-xs font-black uppercase italic">Privacidad</span>
+          </button>
+
+          <button 
+            onClick={logout}
+            className="w-full h-16 bg-red-500/10 border border-red-500/20 rounded-2xl px-6 flex items-center gap-4 active:scale-95 transition-all text-red-500"
+          >
+            <LogOut size={20} />
+            <span className="text-xs font-black uppercase italic">Cerrar Sesión</span>
+          </button>
+        </div>
+
         <button 
-          type="submit" 
-          disabled={loading}
-          className="w-full bg-white text-black p-4 rounded-2xl font-black uppercase italic tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"
+          onClick={() => router.back()}
+          className="w-full flex items-center justify-center gap-2 text-zinc-500 text-[10px] font-black uppercase italic hover:text-white transition-colors pt-8"
         >
-          {loading ? "Guardando..." : success ? "¡Datos Actualizados!" : "Guardar Cambios"}
+          <ArrowLeft size={14} /> Volver
         </button>
-      </form>
+      </div>
     </div>
   );
 }
