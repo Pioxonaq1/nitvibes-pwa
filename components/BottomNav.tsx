@@ -1,72 +1,56 @@
 "use client";
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import { Map, Zap, User, LayoutDashboard, Settings, PlusCircle, Ticket } from "lucide-react";
+import { Map, Zap, User, Home } from "lucide-react";
 
 export default function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user } = useAuth();
 
-  const getNavItems = () => {
-    const role = user?.role || "visitor";
-
-    switch (role) {
-      case "admin":
-      case "team":
-        return [
-          { label: "Mapa", icon: Map, path: "/mapa" },
-          { label: "Vibes", icon: Zap, path: "/vibes" },
-          { label: "Ajustes", icon: Settings, path: "/settings" },
-          { label: "Panel", icon: LayoutDashboard, path: "/admin/panel" },
-        ];
-      case "partner":
-        return [
-          { label: "Mapa", icon: Map, path: "/mapa" },
-          { label: "Lanzar", icon: PlusCircle, path: "/partner/venues/lanzar" },
-          { label: "Ajustes", icon: Settings, path: "/settings" },
-          { label: "Panel", icon: LayoutDashboard, path: "/partner/venues/dashboard" },
-        ];
-      case "viber":
-        return [
-          { label: "Mapa", icon: Map, path: "/mapa" },
-          { label: "Flash", icon: Ticket, path: "/viber/flash-actions" },
-          { label: "Ajustes", icon: Settings, path: "/settings" },
-          { label: "Panel", icon: LayoutDashboard, path: "/perfil" },
-        ];
-      default: // Visitante
-        return [
-          { label: "Home", icon: Zap, path: "/" },
-          { label: "Mapa", icon: Map, path: "/mapa" },
-          { label: "Vibes", icon: Zap, path: "/vibes" },
-          { label: "Perfil", icon: User, path: "/perfil" },
-        ];
-    }
-  };
-
-  const navItems = getNavItems();
+  const navItems = [
+    { label: "INICIO", icon: Home, path: "/" },
+    { label: "MAPA", icon: Map, path: "/mapa" },
+    { label: "VIBES", icon: Zap, path: "/vibes" },
+    { label: "PERFIL", icon: User, path: "/perfil" },
+  ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/5 px-4 pb-8 pt-4">
-      <div className="flex justify-around items-center max-w-md mx-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.path;
-          return (
-            <button
-              key={item.label}
-              onClick={() => router.push(item.path)}
-              className={`flex flex-col items-center gap-1 transition-all ${isActive ? "text-pink-500 scale-110" : "text-zinc-500 hover:text-zinc-300"}`}
-            >
-              <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[9px] font-black uppercase italic tracking-tighter">
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </nav>
+    <footer className="fixed bottom-0 left-0 right-0 z-50">
+      <nav className="bg-black/90 backdrop-blur-xl border-t border-white/5 px-4 pb-6 pt-4">
+        <div className="flex justify-around items-center max-w-md mx-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.path;
+            return (
+              <button
+                key={item.label}
+                onClick={() => router.push(item.path)}
+                className={`flex flex-col items-center gap-1.5 transition-all duration-300 ${
+                  isActive ? "text-yellow-400 scale-110" : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                <span className="text-[9px] font-black uppercase italic tracking-tighter">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        
+        <div className="mt-4 flex flex-col items-center gap-1 border-t border-white/5 pt-3">
+          <div className="flex gap-4 text-[7px] font-bold text-zinc-600 uppercase tracking-widest">
+            <span>© 2025 NITVIBES</span>
+            <span className="text-zinc-800">|</span>
+            <span>DEV BY KONNEKTWERK</span>
+          </div>
+          <div className="flex gap-3 text-[6px] text-zinc-700 uppercase">
+            <span>Privacidad</span>
+            <span>Cookies</span>
+            <span>Legal</span>
+          </div>
+        </div>
+      </nav>
+    </footer>
   );
 }
