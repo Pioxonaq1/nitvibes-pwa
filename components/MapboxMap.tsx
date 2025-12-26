@@ -7,14 +7,14 @@ import { useAuth } from "@/context/AuthContext";
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "";
 
 export default function MapboxMap() {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapbox-gl.Map | null>(null);
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
   const { user } = useAuth();
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    mapRef.current = new mapboxgl.Map({
+    const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/dark-v11",
       center: [2.1734, 41.3851],
@@ -22,26 +22,31 @@ export default function MapboxMap() {
       pitch: 45,
     });
 
-    mapRef.current.on("load", () => {
-      if (!mapRef.current) return;
+    mapRef.current = map as any;
 
+    map.on("load", () => {
       if (!user || user.role === "visitor") {
-        mapRef.current.addSource("cyan-dots", {
+        const features = Array.from({ length: 50 }).map(() => ({
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "Point",
+            coordinates: [
+              2.1734 + (Math.random() - 0.5) * 0.05,
+              41.3851 + (Math.random() - 0.5) * 0.05,
+            ],
+          },
+        }));
+
+        map.addSource("cyan-dots", {
           type: "geojson",
           data: {
             type: "FeatureCollection",
-            features: Array.from({ length: 50 }).map(() => ({
-              type: "Feature",
-              properties: {},
-              geometry: {
-                type: "Point",
-                coordinates: [2.1734 + (Math.random() - 0.5) * 0.05, 41.3851 + (Math.random() - 0.5) * 0.05],
-              },
-            })),
+            features: features as any,
           },
         });
 
-        mapRef.current.addLayer({
+        map.addLayer({
           id: "cyan-layer",
           type: "circle",
           source: "cyan-dots",
@@ -55,7 +60,11 @@ export default function MapboxMap() {
       }
     });
 
-    return () => mapRef.current?.remove();
+    return () => {
+      if (mapRef.current) {
+        (mapRef.current as any).remove();
+      }
+    };
   }, [user]);
 
   return <div ref={mapContainerRef} className="w-full h-full min-h-[100dvh]" />;
