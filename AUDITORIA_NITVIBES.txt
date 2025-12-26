@@ -1,0 +1,390 @@
+--- INVENTARIO TÉCNICO NITVIBES ---
+1. ESTRUCTURA DE CARPETAS:
+.
+./AUDITORIA_NITVIBES.txt
+./context
+./context/AuthContext.tsx
+./context/LanguageContext.tsx
+./app
+./app/mapa
+./app/mapa/page.tsx
+./app/studio
+./app/studio/[[...tool]]
+./app/studio/[[...tool]]/page.tsx
+./app/favicon.ico
+./app/perfil
+./app/perfil/page.tsx
+./app/(roles)
+./app/(roles)/partner
+./app/(roles)/partner/venues
+./app/(roles)/partner/venues/dashboard
+./app/(roles)/partner/venues/dashboard/page.tsx
+./app/(roles)/partner/venues/components
+./app/(roles)/partner/venues/components/PartnerMapbox.tsx
+./app/(roles)/partner/venues/components/navigation
+./app/(roles)/partner/venues/components/navigation/VenueNav.tsx
+./app/(roles)/partner/venues/login
+./app/(roles)/partner/venues/login/page.tsx
+./app/(roles)/partner/hotvibers
+./app/(roles)/viber
+./app/(roles)/viber/settings
+./app/(roles)/viber/settings/page.tsx
+./app/(roles)/viber/flash-actions
+./app/(roles)/viber/flash-actions/page.tsx
+./app/(roles)/viber/dashboard
+./app/(roles)/viber/dashboard/page.tsx
+./app/(roles)/viber/components
+./app/(roles)/viber/components/FlashSlider.tsx
+./app/(roles)/viber/components/ViberMapbox.tsx
+./app/(roles)/viber/components/FlashList.tsx
+./app/(roles)/viber/components/navigation
+./app/(roles)/viber/components/navigation/ViberNav.tsx
+./app/(roles)/viber/components/ViberHeader.tsx
+./app/(roles)/viber/components/SocialModule.tsx
+./app/(roles)/viber/components/TuVibeSelector.tsx
+./app/(roles)/viber/components/MainActions.tsx
+./app/(roles)/viber/login
+./app/(roles)/viber/login/page.tsx
+./app/(roles)/team
+./app/(roles)/team/dashboard
+./app/(roles)/team/dashboard/page.tsx
+./app/(roles)/team/components
+./app/(roles)/team/components/FlashAnalytics.tsx
+./app/(roles)/team/components/navigation
+./app/(roles)/team/components/navigation/TeamNav.tsx
+./app/(roles)/team/components/TeamMapbox.tsx
+./app/(roles)/team/components/VenueApprovals.tsx
+./app/(roles)/team/components/VibeManager.tsx
+./app/(roles)/team/components/TeamDashboard.tsx
+./app/(roles)/team/components/WeeklyBrain.tsx
+./app/(roles)/team/login
+./app/(roles)/team/login/action.ts
+./app/(roles)/team/login/page.tsx
+./app/(roles)/gov
+./app/(roles)/gov/dashboard
+./app/(roles)/gov/dashboard/page.tsx
+./app/(roles)/gov/components
+./app/(roles)/gov/components/GovMapbox.tsx
+./app/(roles)/gov/components/navigation
+./app/(roles)/gov/components/navigation/GovNav.tsx
+./app/(roles)/gov/login
+./app/(roles)/gov/login/page.tsx
+./app/vibes
+./app/vibes/page.tsx
+./app/vibes/[slug]
+./app/vibes/[slug]/page.tsx
+./app/register
+./app/register/page.tsx
+./app/audit
+./app/audit/page.tsx
+./app/forgot-password
+./app/forgot-password/page.tsx
+./app/layout.tsx
+./app/page.tsx
+./app/globals.css
+./postcss.config.mjs
+./next.config.mjs
+./tsconfig.tsbuildinfo
+./next-env.d.ts
+./README.md
+./tailwind.config.ts
+./sanity
+./sanity/client.ts
+./components
+./components/ui
+./components/ui/button.tsx
+./components/ui/select.tsx
+./components/ui/input.tsx
+./components/PartnerPromoStats.tsx
+./components/MapboxMap.tsx
+./components/NearbyUsersCounter.tsx
+./components/BottomNav.tsx
+./components/navigation
+./components/navigation/PublicNav.tsx
+./components/navigation/ViberNav.tsx
+./components/Footer.tsx
+./components/map
+./components/map/layers
+./components/map/layers/PublicLayer.tsx
+./components/map/layers/ViberLayer.tsx
+./components/FlashPromoList.tsx
+./components/UGCVibesList.tsx
+./components/HeroCarousel.tsx
+./public
+./public/hero-2.jpg
+./public/hero-3.jpg
+./public/hero-1.jpg
+./public/manifest.json
+./package-lock.json
+./package.json
+./sanity.config.ts
+./lib
+./lib/useSimulation.ts
+./lib/firebase.ts
+./lib/utils.ts
+./lib/metroData.ts
+./lib/constants.ts
+./lib/translations.ts
+./components.json
+./tsconfig.json
+./eslint.config.mjs
+
+2. DEPENDENCIAS (package.json):
+{
+  "name": "nitvibes-pwa",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@portabletext/react": "^4.0.3",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@sanity/vision": "^5.1.0",
+    "@turf/turf": "^7.3.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.0.0",
+    "firebase": "^10.0.0",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.300.0",
+    "mapbox-gl": "^3.17.0",
+    "next": "14.2.3",
+    "next-sanity": "^9.1.1",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-map-gl": "^8.1.0",
+    "sanity": "^4.3.0",
+    "styled-components": "^6.1.19",
+    "tailwind-merge": "^2.0.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/mapbox-gl": "^3.4.1",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.3",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0",
+    "typescript": "^5"
+  }
+}
+
+3. CORAZÓN DEL SISTEMA (AuthContext.tsx):
+"use client";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+interface AuthContextType {
+  user: any;
+  login: (userData: any, password?: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  setExternalUser: (userData: any) => void;
+  logout: () => void;
+  loading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const savedUser = sessionStorage.getItem("user");
+    if (savedUser) setUser(JSON.parse(savedUser));
+    setLoading(false);
+
+    // REGLA KONNEKTWERK: Cierre de pestaña/navegador limpia sesión [cite: 2025-12-25]
+    const handleTabClose = () => {
+      sessionStorage.removeItem("user");
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(() => {}); 
+      }
+    };
+
+    window.addEventListener("beforeunload", handleTabClose);
+    return () => window.removeEventListener("beforeunload", handleTabClose);
+  }, []);
+
+  const login = async (userData: any, password?: string) => {
+    // Si recibe (email, pass), lo convertimos en perfil para no romper Gov/Partner
+    const profile = password ? { email: userData, role: "visitor" } : userData;
+    setUser(profile);
+    sessionStorage.setItem("user", JSON.stringify(profile));
+    
+    // Redirección condicional a rutas confirmadas [cite: 2021-12-21, 2025-12-25]
+    if (profile.role === "viber") router.push("/viber/components/dashboard");
+    else if (profile.role === "partner") router.push("/partner/venues/dashboard");
+    else router.push("/perfil");
+  };
+
+  const loginWithGoogle = async () => {
+    // Simulación de login exitoso para el rol Viber [cite: 2025-12-26]
+    await login({ email: "viber@nitvibes.com", role: "viber", name: "Viber User" });
+  };
+
+  const setExternalUser = (userData: any) => {
+    setUser(userData);
+    sessionStorage.setItem("user", JSON.stringify(userData));
+  };
+
+  const logout = () => {
+    setUser(null);
+    sessionStorage.removeItem("user");
+    router.push("/"); // Logout a Home [cite: 2021-12-25]
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, setExternalUser, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) throw new Error("useAuth must be used within AuthProvider");
+  return context;
+};
+
+4. NAVEGACIÓN (BottomNav.tsx):
+"use client";
+import React from "react";
+import { useAuth } from "@/context/AuthContext";
+import PublicNav from "./navigation/PublicNav";
+import ViberNav from "./navigation/ViberNav";
+
+export default function BottomNav() {
+  const { user, loading } = useAuth();
+
+  if (loading) return null;
+
+  const renderNav = () => {
+    // Si no hay usuario o es visitante, PublicNav
+    if (!user || user.role === "visitor") {
+      return <PublicNav />;
+    }
+    
+    // Si es Viber, ViberNav
+    if (user.role === "viber") {
+      return <ViberNav />;
+    }
+
+    // Por defecto mientras estabilizamos el resto
+    return <PublicNav />;
+  };
+
+  return (
+    <footer className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/10">
+      {renderNav()}
+      
+      <div className="bg-black py-1.5 px-6 border-t border-white/5">
+        <div className="max-w-md mx-auto flex justify-between items-center text-[7px] text-zinc-600 uppercase font-black tracking-widest">
+          <span>© 2025 NITVIBES</span>
+          <a href="https://konnektwerk.com/" target="_blank" className="hover:text-yellow-400 transition-colors">
+            DEV BY KONNEKTWERK
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+5. PÁGINA DE ACCESO (app/perfil/page.tsx):
+"use client";
+import React from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { Chrome, Mail, Store, Shield, Building2 } from "lucide-react";
+
+export default function AccessIDPage() {
+  const router = useRouter();
+  const { loginWithGoogle } = useAuth();
+
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+      router.push("/viber/components/dashboard");
+    } catch (error) {
+      console.error("Error en login Google", error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-white p-6 pb-32 flex flex-col items-center">
+      <div className="w-full max-w-2xl space-y-8">
+        
+        <div className="text-center mt-12 mb-4">
+          <h1 className="text-4xl font-black italic uppercase tracking-tighter">ACCESS ID</h1>
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-2">Selecciona tu perfil de acceso</p>
+        </div>
+
+        {/* SECCIÓN ACCESS VIBER (Contenedor del dibujo) [cite: 2025-12-25] */}
+        <div className="border border-white/10 rounded-[2.5rem] p-8 bg-zinc-900/20 space-y-4">
+          <h2 className="text-xs font-black uppercase tracking-[0.3em] text-blue-400 text-center mb-6 italic">ACCESS VIBER</h2>
+          
+          <button 
+            onClick={handleGoogleLogin} 
+            className="w-full bg-white text-black h-16 rounded-2xl font-black uppercase italic flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all"
+          >
+            <Chrome size={22} /> Ingresa con Google
+          </button>
+
+          <button 
+            onClick={() => router.push("/viber/login")} 
+            className="w-full bg-zinc-800 text-white h-16 rounded-2xl font-black uppercase italic flex items-center justify-center gap-3 border border-white/5 active:scale-95 transition-all"
+          >
+            <Mail size={22} /> Ingresa con Email y Password
+          </button>
+
+          <button 
+            onClick={() => router.push("/register")} 
+            className="w-full h-16 rounded-2xl font-black uppercase italic text-zinc-400 border border-dashed border-white/20 active:opacity-70 transition-all"
+          >
+            Regístrate Gratis
+          </button>
+        </div>
+
+        {/* RESTO DE PERFILES (Orden del dibujo) [cite: 2025-12-25] */}
+        <div className="space-y-4">
+          <button 
+            onClick={() => router.push("/partner/venues/login")} 
+            className="w-full bg-zinc-900 border border-pink-500/20 h-20 rounded-2xl flex flex-col items-center justify-center gap-1 active:border-pink-500 transition-all"
+          >
+            <span className="text-xs font-black text-pink-500 uppercase tracking-widest flex items-center gap-2">
+              <Store size={18} /> ACCESS PARTNER
+            </span>
+            <span className="text-[8px] text-zinc-600 font-bold uppercase italic tracking-tighter">Venues & HotVibers</span>
+          </button>
+
+          <button 
+            onClick={() => router.push("/team/login")} 
+            className="w-full bg-zinc-900 border border-blue-500/20 h-16 rounded-2xl flex items-center justify-center gap-3 active:border-blue-500 transition-all"
+          >
+            <Shield size={20} className="text-blue-500" />
+            <span className="text-xs font-black text-blue-400 uppercase tracking-widest">ACCESS TEAM</span>
+          </button>
+
+          <button 
+            onClick={() => router.push("/gov/login")} 
+            className="w-full bg-zinc-900 border border-emerald-500/20 h-16 rounded-2xl flex items-center justify-center gap-3 active:border-emerald-500 transition-all"
+          >
+            <Building2 size={20} className="text-emerald-500" />
+            <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">ACCESS GOV</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+6. DASHBOARD VIBER (app/(roles)/viber/components/dashboard/page.tsx):
