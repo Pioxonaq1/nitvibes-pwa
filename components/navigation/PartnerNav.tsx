@@ -1,28 +1,25 @@
 "use client";
 import React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Store, PlusCircle, LayoutDashboard } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { Map, PlusCircle, Settings, LayoutDashboard } from "lucide-react";
 
 export default function PartnerNav() {
+  const router = useRouter();
   const pathname = usePathname();
-  const navItems = [
-    { label: "Home", icon: Home, path: "/" },
-    { label: "Mi Local", icon: Store, path: "/partner/venue" },
-    { label: "Nueva Promo", icon: PlusCircle, path: "/partner/flash-setup" },
-    { label: "Panel", icon: LayoutDashboard, path: "/partner/dashboard" },
+  const items = [
+    { label: "MAPA", icon: Map, path: "/mapa" },
+    { label: "LANZAR", icon: PlusCircle, path: "/partner/venues/lanzar" },
+    { label: "AJUSTES", icon: Settings, path: "/settings" },
+    { label: "PANEL", icon: LayoutDashboard, path: "/partner/venues/dashboard" },
   ];
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-pink-500/20 pb-8 pt-4 px-8 z-50">
-      <div className="flex justify-between items-center max-w-md mx-auto">
-        {navItems.map((item) => (
-          <Link key={item.label} href={item.path} className={`flex flex-col items-center gap-1.5 ${pathname === item.path ? "text-pink-500" : "text-zinc-600"}`}>
-            <item.icon size={20} />
-            <span className="text-[9px] font-black uppercase italic">{item.label}</span>
-          </Link>
-        ))}
-      </div>
-    </nav>
+    <div className="flex justify-around items-center h-16 max-w-md mx-auto">
+      {items.map((item) => (
+        <button key={item.label} onClick={() => router.push(item.path)} className={`flex flex-col items-center gap-1 ${pathname === item.path ? "text-yellow-400" : "text-zinc-500"}`}>
+          <item.icon size={20} />
+          <span className="text-[9px] font-black uppercase italic">{item.label}</span>
+        </button>
+      ))}
+    </div>
   );
 }
