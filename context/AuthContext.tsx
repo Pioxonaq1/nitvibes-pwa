@@ -31,7 +31,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Recuperar sesión persistente de Venue si existe [cite: 2025-12-25]
     const savedVenue = localStorage.getItem("venue_session");
     if (savedVenue) {
       setUser(JSON.parse(savedVenue));
@@ -39,7 +38,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Solo manejamos Firebase Auth si no hay un Venue logueado manualmente [cite: 2025-12-25]
       if (firebaseUser && !localStorage.getItem("venue_session")) {
         const docRef = doc(db, "users", firebaseUser.uid);
         const docSnap = await getDoc(docRef);
@@ -69,7 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem("venue_session");
     await signOut(auth);
     setUser(null);
-    window.location.href = "/"; // Regla: logout siempre a HOME [cite: 2025-12-25]
+    window.location.href = "/";
   };
 
   const setExternalUser = (data: UserData) => {
