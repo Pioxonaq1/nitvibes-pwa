@@ -25,31 +25,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const handleTabClose = () => {
       sessionStorage.removeItem("user");
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(() => {}); 
-      }
+      if ("geolocation" in navigator) navigator.geolocation.getCurrentPosition(() => {});
     };
     window.addEventListener("beforeunload", handleTabClose);
     return () => window.removeEventListener("beforeunload", handleTabClose);
   }, []);
 
   const login = async (userData: any, password?: string) => {
-    const profile = password ? { email: userData, role: "visitor" } : userData;
+    const profile = password ? { email: userData, role: userData.includes("partner") ? "partner" : "viber" } : userData;
     setUser(profile);
     sessionStorage.setItem("user", JSON.stringify(profile));
     
-    // Redirección directa por Rol 
+    // Redirección por Rol [cite: 2021-12-21, 2025-12-25]
     if (profile.role === "viber") router.push("/viber/dashboard");
     else if (profile.role === "partner") router.push("/partner/venues/dashboard");
-    else if (profile.role === "gov") router.push("/gov/dashboard");
     else if (profile.role === "team") router.push("/team/dashboard");
+    else if (profile.role === "gov") router.push("/gov/dashboard");
     else router.push("/");
   };
 
   const loginWithGoogle = async () => {
-    // Simulación según tu prompt para Barcelona 
-    const viberUser = { email: "viber@barcelona.com", role: "viber", name: "Viber Local" };
-    await login(viberUser);
+    await login({ email: "viber@nitvibes.com", role: "viber", name: "Viber Barcelona" });
   };
 
   const setExternalUser = (userData: any) => {
