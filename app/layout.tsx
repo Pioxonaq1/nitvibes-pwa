@@ -1,28 +1,29 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import React from "react";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
-import Navbar from "@/components/Navbar";
+import BottomNav from "@/components/BottomNav";
 
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "NITVIBES | Tu noche comienza aquí",
-  description: "Descubre los mejores bares, clubes y eventos en tiempo real.",
+export const metadata = {
+  title: "NITVIBES",
+  description: "Tu noche comienza aquí",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="es">
-      <body className={`${inter.className} bg-black text-white`}>
+      <head>
+        <meta name="theme-color" content="#000000" />
+        <link rel="apple-touch-icon" href="/logo-nitvibes.png" />
+      </head>
+      <body className="bg-black antialiased selection:bg-yellow-400 selection:text-black">
         <AuthProvider>
           {children}
-          {/* El Navbar se renderiza aquí para todas las páginas [cite: 2025-12-23] */}
-          <Navbar />
+          <BottomNav />
         </AuthProvider>
       </body>
     </html>
