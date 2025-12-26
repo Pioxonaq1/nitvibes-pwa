@@ -19,7 +19,6 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-black text-white relative overflow-hidden font-sans">
-      {/* BACKGROUND SLIDER */}
       <div className="absolute inset-0 z-0">
         {images.map((img, i) => (
           <div
@@ -33,7 +32,6 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black" />
       </div>
 
-      {/* HEADER: LOGO & CITY SELECTOR */}
       <header className="relative z-20 flex justify-between items-center p-6">
         <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-400/20">
           <span className="text-black font-black text-2xl">N</span>
@@ -45,7 +43,6 @@ export default function HomePage() {
         </button>
       </header>
 
-      {/* MAIN CONTENT */}
       <div className="relative z-10 flex flex-col items-center justify-center h-[calc(100vh-160px)] px-6 text-center">
         <div className="mb-8">
           <h1 className="text-7xl md:text-9xl font-black italic uppercase tracking-tighter leading-none">
@@ -76,7 +73,6 @@ export default function HomePage() {
           </button>
         </div>
       </div>
-
       <BottomNav />
     </main>
   );
