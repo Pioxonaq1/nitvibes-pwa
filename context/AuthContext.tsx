@@ -8,8 +8,10 @@ interface UserData {
   uid: string;
   email: string | null;
   nombre?: string;
+  name?: string;
   role?: string;
   isVenue?: boolean;
+  [key: string]: any;
 }
 
 interface AuthContextType {
@@ -41,7 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (docSnap.exists()) {
           setUser({ uid: firebaseUser.uid, email: firebaseUser.email, ...docSnap.data() } as UserData);
         } else {
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'viber' });
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: "viber" });
         }
       } else if (!firebaseUser && !localStorage.getItem("venue_session")) {
         setUser(null);
@@ -68,7 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const setExternalUser = (data: UserData) => {
-    const venueUser = { ...data, role: 'partner', isVenue: true };
+    const venueUser = { ...data, role: "partner", isVenue: true };
     setUser(venueUser);
     localStorage.setItem("venue_session", JSON.stringify(venueUser));
   };
