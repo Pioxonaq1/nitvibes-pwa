@@ -1,33 +1,39 @@
 "use client";
 import React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Home, Map, Sparkles, User } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { Home, Map, Zap, User } from "lucide-react";
 
 export default function PublicNav() {
+  const router = useRouter();
   const pathname = usePathname();
-  
-  const navItems = [
-    { label: "Home", icon: Home, path: "/" },
-    { label: "Mapa", icon: Map, path: "/mapa" },
-    { label: "Vibes", icon: Sparkles, path: "/vibes" },
-    { label: "Perfil", icon: User, path: "/perfil" },
+
+  const items = [
+    { label: "INICIO", icon: Home, path: "/" },
+    { label: "MAPA", icon: Map, path: "/mapa" },
+    { label: "VIBES", icon: Zap, path: "/vibes" },
+    { label: "PERFIL", icon: User, path: "/perfil" },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/5 pb-8 pt-4 px-8 z-50">
-      <div className="flex justify-between items-center max-w-md mx-auto">
-        {navItems.map((item) => (
-          <Link 
-            key={item.label} 
-            href={item.path || "/"} 
-            className={`flex flex-col items-center gap-1.5 transition-colors ${pathname === item.path ? "text-purple-400" : "text-zinc-600 hover:text-white"}`}
+    <div className="flex justify-around items-center h-16 max-w-md mx-auto">
+      {items.map((item) => {
+        const Icon = item.icon;
+        const isActive = pathname === item.path;
+        return (
+          <button
+            key={item.label}
+            onClick={() => router.push(item.path)}
+            className={`flex flex-col items-center gap-1 transition-all ${
+              isActive ? "text-yellow-400 scale-110" : "text-zinc-500"
+            }`}
           >
-            <item.icon size={20} />
-            <span className="text-[9px] font-black uppercase italic">{item.label}</span>
-          </Link>
-        ))}
-      </div>
-    </nav>
+            <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+            <span className="text-[9px] font-black uppercase italic tracking-tighter">
+              {item.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
