@@ -11,7 +11,7 @@ export default function AccessIDPage() {
   const handleGoogleLogin = async () => {
     try {
       await loginWithGoogle();
-      router.push("/viber/dashboard");
+      router.push("/viber/components/dashboard");
     } catch (error) {
       console.error("Error en login Google", error);
     }

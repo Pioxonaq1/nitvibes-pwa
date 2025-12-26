@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 
 interface AuthContextType {
   user: any;
-  login: (userData: any) => void;
+  login: (userData: any, password?: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -21,10 +22,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedUser) setUser(JSON.parse(savedUser));
     setLoading(false);
 
-    // Cierre de sesión y fin de procesos al cerrar pestaña [cite: 2025-12-25]
     const handleTabClose = () => {
       sessionStorage.removeItem("user");
-      // Detener procesos activos
       if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(() => {}); 
       }
@@ -34,23 +33,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("beforeunload", handleTabClose);
   }, []);
 
-  const login = (userData: any) => {
-    setUser(userData);
-    sessionStorage.setItem("user", JSON.stringify(userData));
-    // Redirección inicial tras login
-    if (userData.role === "viber") router.push("/viber/components/dashboard");
-    else if (userData.role === "partner") router.push("/partner/venues/dashboard");
+  const login = async (userData: any, password?: string) => {
+    // Si viene como (email, pass), simulamos el objeto para no romper páginas antiguas
+    const profile = password ? { email: userData, role: "gov" } : userData;
+    setUser(profile);
+    sessionStorage.setItem("user", JSON.stringify(profile));
+    
+    if (profile.role === "viber") router.push("/viber/components/dashboard");
+    else if (profile.role === "partner") router.push("/partner/venues/dashboard");
+    else if (profile.role === "gov") router.push("/gov/dashboard");
     else router.push("/perfil");
+  };
+
+  const loginWithGoogle = async () => {
+    const mockGoogleUser = { email: "user@google.com", role: "viber", name: "Google User" };
+    await login(mockGoogleUser);
   };
 
   const logout = () => {
     setUser(null);
     sessionStorage.removeItem("user");
-    router.push("/"); // Regresa a HOME al cerrar sesión [cite: 2021-12-21, 2025-12-25]
+    router.push("/");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
