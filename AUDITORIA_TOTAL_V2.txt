@@ -1,9 +1,9 @@
-=== AUDITORÍA ESTRUCTURAL COMPLETA NITVIBES ===
-Generada el: Fri Dec 26 10:30:43 CET 2025
+=== AUDITORÍA INTEGRAL NITVIBES (VERSIÓN TOTAL) ===
+Generada el: Fri Dec 26 11:20:51 CET 2025
+Directorio actual: /Users/pioxonaq/NITVIBES PWA/nitvibes-pwa
 ------------------------------------------------
-1. ÁRBOL DE ARCHIVOS COMPLETO
+1. MAPA COMPLETO DE ARCHIVOS (Incluyendo Assets)
 .
-./AUDITORIA_TOTAL.txt
 ./context
 ./context/AuthContext.tsx
 ./context/LanguageContext.tsx
@@ -85,6 +85,7 @@ Generada el: Fri Dec 26 10:30:43 CET 2025
 ./app/page.tsx
 ./app/globals.css
 ./postcss.config.mjs
+./AUDITORIA_TOTAL_V2.txt
 ./next.config.mjs
 ./tsconfig.tsbuildinfo
 ./next-env.d.ts
@@ -135,8 +136,8 @@ Generada el: Fri Dec 26 10:30:43 CET 2025
 ./tsconfig.json
 ./eslint.config.mjs
 ------------------------------------------------
-2. CONTENIDO DE ARCHIVOS (LÓGICA Y CONFIG)
--e \n--- ARCHIVO: ./context/AuthContext.tsx ---
+2. CONTENIDO DETALLADO DE ARCHIVOS
+-e \n--- INICIO ARCHIVO: ./context/AuthContext.tsx ---
 "use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
@@ -170,7 +171,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Recuperar sesión persistente de Venue si existe [cite: 2025-12-25]
     const savedVenue = localStorage.getItem("venue_session");
     if (savedVenue) {
       setUser(JSON.parse(savedVenue));
@@ -178,7 +178,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Solo manejamos Firebase Auth si no hay un Venue logueado manualmente [cite: 2025-12-25]
       if (firebaseUser && !localStorage.getItem("venue_session")) {
         const docRef = doc(db, "users", firebaseUser.uid);
         const docSnap = await getDoc(docRef);
@@ -208,7 +207,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.removeItem("venue_session");
     await signOut(auth);
     setUser(null);
-    window.location.href = "/"; // Regla: logout siempre a HOME [cite: 2025-12-25]
+    window.location.href = "/";
   };
 
   const setExternalUser = (data: UserData) => {
@@ -229,7 +228,8 @@ export const useAuth = () => {
   if (context === undefined) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };
--e \n--- ARCHIVO: ./context/LanguageContext.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./context/LanguageContext.tsx ---
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -278,7 +278,8 @@ export function useLanguage() {
   const context = useContext(LanguageContext);
   if (!context) throw new Error("useLanguage debe usarse dentro de un LanguageProvider");
   return context;
-}-e \n--- ARCHIVO: ./app/mapa/page.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/mapa/page.tsx ---
 import MapboxMap from '@/components/MapboxMap';
 import BottomNav from '@/components/BottomNav';
 
@@ -290,7 +291,8 @@ export default function MapaGeneralPage() {
     </main>
   );
 }
--e \n--- ARCHIVO: ./app/studio/[[...tool]]/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/studio/[[...tool]]/page.tsx ---
 /**
  * This route is responsible for the built-in authoring environment using Sanity Studio.
  * All routes under your studio path will be handled by this file using Next.js Rewrites & Layouts.
@@ -305,7 +307,8 @@ export { metadata, viewport } from 'next-sanity/studio'
 export default function StudioPage() {
   return <NextStudio config={config} />
 }
--e \n--- ARCHIVO: ./app/perfil/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/perfil/page.tsx ---
 "use client";
 import React from "react";
 import { useRouter } from "next/navigation";
@@ -393,7 +396,8 @@ export default function AccessIDPage() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/partner/venues/dashboard/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/partner/venues/dashboard/page.tsx ---
 "use client";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -499,7 +503,8 @@ export default function VenueDashboard() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/partner/venues/components/PartnerMapbox.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/partner/venues/components/PartnerMapbox.tsx ---
 "use client";
 import React, { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
@@ -530,7 +535,8 @@ export default function PartnerMapbox() {
 
   return <div ref={mapContainer} className="w-full h-full" />;
 }
--e \n--- ARCHIVO: ./app/(roles)/partner/venues/components/navigation/VenueNav.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/partner/venues/components/navigation/VenueNav.tsx ---
 "use client";
 import React from "react";
 import Link from "next/navigation"; // Cambiado a next/link en el renderizado final para evitar errores
@@ -572,7 +578,8 @@ export default function VenueNav() {
     </nav>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/partner/venues/login/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/partner/venues/login/page.tsx ---
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -649,7 +656,8 @@ export default function VenueLoginPage() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/settings/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/settings/page.tsx ---
 "use client";
 import React from "react";
 import { useRouter } from "next/navigation";
@@ -709,7 +717,8 @@ export default function ViberSettings() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/flash-actions/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/flash-actions/page.tsx ---
 "use client";
 import React from "react";
 import { useRouter } from "next/navigation";
@@ -741,7 +750,8 @@ export default function FlashActionsPage() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/dashboard/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/dashboard/page.tsx ---
 "use client";
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -781,7 +791,8 @@ export default function ViberDashboard() {
     </main>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/components/FlashSlider.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/components/FlashSlider.tsx ---
 "use client";
 import React from "react";
 import { Zap, Clock, ChevronRight } from "lucide-react";
@@ -824,7 +835,8 @@ export default function FlashSlider() {
     </section>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/components/ViberMapbox.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/components/ViberMapbox.tsx ---
 "use client";
 import React from "react";
 
@@ -841,7 +853,8 @@ export default function ViberMapbox() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/components/FlashList.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/components/FlashList.tsx ---
 "use client";
 import React, { useState } from "react";
 import { Zap, MapPin, Clock, Euro, Share2 } from "lucide-react";
@@ -895,7 +908,8 @@ export default function FlashList({ limit }: { limit?: number }) {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/components/navigation/ViberNav.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/components/navigation/ViberNav.tsx ---
 "use client";
 import React from "react";
 import Link from "next/link";
@@ -936,7 +950,8 @@ export default function ViberNav() {
     </nav>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/components/ViberHeader.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/components/ViberHeader.tsx ---
 "use client";
 import React from "react";
 import { LogOut, Settings } from "lucide-react";
@@ -967,7 +982,8 @@ export default function ViberHeader({ onLogout }: { onLogout: () => void }) {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/components/SocialModule.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/components/SocialModule.tsx ---
 "use client";
 import React from "react";
 import { Users, UserPlus } from "lucide-react";
@@ -987,7 +1003,8 @@ export default function SocialModule() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/components/TuVibeSelector.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/components/TuVibeSelector.tsx ---
 "use client";
 import React from "react";
 import { X, Heart, Users, Beer, Target, Briefcase, UserPlus, Sparkles, CheckCircle2 } from "lucide-react";
@@ -1077,7 +1094,8 @@ export default function TuVibeSelector({
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/components/MainActions.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/components/MainActions.tsx ---
 "use client";
 import React from "react";
 import { Plus, Sparkles, Map, Check } from "lucide-react";
@@ -1112,7 +1130,8 @@ export default function MainActions({ onOpenVibe, isMoodActive }: MainActionsPro
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/viber/login/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/viber/login/page.tsx ---
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -1168,7 +1187,8 @@ export default function ViberLoginPage() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/team/dashboard/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/dashboard/page.tsx ---
 "use client";
 
 import { useAuth } from '@/context/AuthContext';
@@ -1245,7 +1265,8 @@ export default function AdminPage() {
       </main>
     </div>
   );
-}-e \n--- ARCHIVO: ./app/(roles)/team/components/FlashAnalytics.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/components/FlashAnalytics.tsx ---
 "use client";
 import React, { useState } from 'react';
 
@@ -1282,7 +1303,8 @@ export default function FlashAnalytics() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/team/components/navigation/TeamNav.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/components/navigation/TeamNav.tsx ---
 "use client";
 import React from "react";
 import Link from "next/link";
@@ -1311,7 +1333,8 @@ export default function TeamNav() {
     </nav>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/team/components/TeamMapbox.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/components/TeamMapbox.tsx ---
 "use client";
 import React from "react";
 
@@ -1327,7 +1350,8 @@ export default function TeamMapbox() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/team/components/VenueApprovals.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/components/VenueApprovals.tsx ---
 "use client";
 import React, { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
@@ -1372,7 +1396,8 @@ export default function VenueApprovals() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/team/components/VibeManager.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/components/VibeManager.tsx ---
 "use client";
 
 import React from 'react';
@@ -1409,7 +1434,8 @@ export default function VibeManager() {
       </button>
     </div>
   );
-}-e \n--- ARCHIVO: ./app/(roles)/team/components/TeamDashboard.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/components/TeamDashboard.tsx ---
 "use client";
 import WeeklyBrain from './WeeklyBrain';
 import VibeManager from './VibeManager';
@@ -1428,7 +1454,8 @@ export default function TeamDashboard({ role }: { role: 'admin' | 'colaborador' 
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/team/components/WeeklyBrain.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/components/WeeklyBrain.tsx ---
 "use client";
 export default function WeeklyBrain() {
   return (
@@ -1440,7 +1467,8 @@ export default function WeeklyBrain() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/team/login/action.ts ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/login/action.ts ---
 'use server'
 
 export async function verifyTeamCredentials(email: string, pass: string) {
@@ -1464,7 +1492,8 @@ export async function verifyTeamCredentials(email: string, pass: string) {
   // 4. FALLO
   return { success: false, role: null };
 }
--e \n--- ARCHIVO: ./app/(roles)/team/login/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/team/login/page.tsx ---
 
 "use client";
 import React, { useState } from "react";
@@ -1543,7 +1572,8 @@ export default function TeamLoginPage() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/gov/dashboard/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/gov/dashboard/page.tsx ---
 "use client";
 
 import { useEffect, useState } from "react";
@@ -1575,7 +1605,8 @@ export default function GovDashboard() {
       <button onClick={() => auth.signOut()} className="bg-gray-800 px-6 py-2 rounded-full text-xs font-bold hover:bg-gray-700">CERRAR SESIÓN</button>
     </div>
   );
-}-e \n--- ARCHIVO: ./app/(roles)/gov/components/GovMapbox.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/gov/components/GovMapbox.tsx ---
 "use client";
 import React from "react";
 
@@ -1591,7 +1622,8 @@ export default function GovMapbox() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/gov/components/navigation/GovNav.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/gov/components/navigation/GovNav.tsx ---
 "use client";
 import React from "react";
 import Link from "next/link";
@@ -1620,7 +1652,8 @@ export default function GovNav() {
     </nav>
   );
 }
--e \n--- ARCHIVO: ./app/(roles)/gov/login/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/(roles)/gov/login/page.tsx ---
 
 "use client";
 import { useState } from "react";
@@ -1714,7 +1747,8 @@ export default function GovLogin() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/vibes/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/vibes/page.tsx ---
 import Link from "next/link";
 import Image from "next/image";
 import { client } from "../../sanity/client";
@@ -1828,7 +1862,8 @@ export default async function VibesPage() {
       </div>
     </main>
   );
-}-e \n--- ARCHIVO: ./app/vibes/[slug]/page.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/vibes/[slug]/page.tsx ---
 import Link from "next/link";
 import Image from "next/image";
 import { client } from "../../../sanity/client";
@@ -1906,7 +1941,8 @@ export default async function PostPage({ params }: { params: { slug: string } })
       </article>
     </main>
   );
-}-e \n--- ARCHIVO: ./app/register/page.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/register/page.tsx ---
 "use client";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -2044,7 +2080,8 @@ export default function RegisterPage() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./app/audit/page.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/audit/page.tsx ---
 "use client";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
@@ -2116,7 +2153,8 @@ export default function AuditPage() {
       </div>
     </div>
   );
-}-e \n--- ARCHIVO: ./app/forgot-password/page.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/forgot-password/page.tsx ---
 "use client";
 import { useState } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
@@ -2137,7 +2175,8 @@ export default function ForgotPasswordPage() {
       </div>
     </div>
   );
-}-e \n--- ARCHIVO: ./app/layout.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/layout.tsx ---
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -2167,134 +2206,105 @@ export default function RootLayout({
       </body>
     </html>
   );
-}-e \n--- ARCHIVO: ./app/page.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/page.tsx ---
 "use client";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import BottomNav from "@/components/BottomNav";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { MapPin, Zap, ChevronDown } from 'lucide-react';
+const images = [
+  "https://images.unsplash.com/photo-1514525253361-bee87184747b?auto=format&fit=crop&q=80&w=1000",
+  "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=1000",
+  "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=1000"
+];
 
-export default function Home() {
-  const [currentImage, setCurrentImage] = useState(0);
-  const [selectedCity, setSelectedCity] = useState('Barcelona');
-  const [isCityOpen, setIsCityOpen] = useState(false);
-
-  // Ciudades con flag de desarrollo [cite: 2025-12-23]
-  const cities = [
-    { name: 'Barcelona', dev: false },
-    { name: 'Madrid', dev: true },
-    { name: 'Valencia', dev: true }
-  ];
-  
-  const images = [
-    "/hero-1.jpg",
-    "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1920&auto=format&fit=crop",
-    "/hero-2.jpg",
-    "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1920&auto=format&fit=crop",
-    "/hero-3.jpg"
-  ];
+export default function HomePage() {
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const router = useRouter();
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentImage((prev) => (prev + 1) % images.length);
+      setCurrentIdx((prev) => (prev + 1) % images.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [images.length]);
+  }, []);
 
   return (
-    <main className="relative min-h-screen bg-black overflow-hidden flex flex-col">
-      {/* Background Images */}
-      {images.map((img, index) => (
-        <div
-          key={img}
-          className={`absolute inset-0 transition-opacity duration-[1500ms] ease-in-out ${
-            index === currentImage ? 'opacity-40' : 'opacity-0'
-          }`}
-          style={{
-            backgroundImage: `url(${img})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
-      ))}
-
-      {/* Header Optimizado [cite: 2025-12-23] */}
-      <header className="relative z-20 w-full p-4 flex flex-col items-center bg-gradient-to-b from-black/90 to-transparent">
-        <div className="w-full flex justify-between items-start max-w-5xl mx-auto">
-          <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-400/20 shrink-0">
-            <span className="text-black font-black text-2xl">N</span>
-          </div>
-
-          <div className="relative">
-            <button 
-              onClick={() => setIsCityOpen(!isCityOpen)}
-              className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/20 px-3 py-2 rounded-full text-white transition-all active:scale-95"
-            >
-              <MapPin size={12} className="text-yellow-400" />
-              <span className="text-[9px] font-black uppercase tracking-widest">{selectedCity}</span>
-              <ChevronDown size={10} className={`transition-transform duration-300 ${isCityOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {isCityOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200 z-[60]">
-                {cities.map((city) => (
-                  <button
-                    key={city.name}
-                    disabled={city.dev}
-                    className={`w-full px-4 py-3 text-left flex flex-col border-b border-white/5 last:border-0 transition-colors ${city.dev ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/10'}`}
-                    onClick={() => {
-                      if (!city.dev) {
-                        setSelectedCity(city.name);
-                        setIsCityOpen(false);
-                      }
-                    }}
-                  >
-                    <span className="text-[10px] font-black text-white uppercase">{city.name}</span>
-                    {city.dev && <span className="text-[7px] font-bold text-yellow-400 uppercase tracking-tighter">Próximamente</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4 md:mt-2 text-center select-none pointer-events-none">
-          <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-white drop-shadow-2xl">
-            NIT<span className="text-yellow-400">VIBES</span>
-          </h1>
-        </div>
-      </header>
-
-      {/* Hero Content */}
-      <div className="relative z-10 flex-grow flex flex-col justify-end items-center px-6 pb-40 text-center">
-        <h2 className="text-3xl md:text-5xl font-black text-white italic uppercase tracking-tighter leading-[0.9] drop-shadow-lg mb-4">
-          TU NOCHE <span className="text-yellow-400">COMIENZA AQUÍ</span>
-        </h2>
-        
-        <p className="text-zinc-300 text-sm md:text-base font-medium max-w-xs md:max-w-md leading-relaxed mb-8 drop-shadow-md">
-          Siente el Vibe de tu ciudad y descubre los mejores <span className="text-white font-bold">bares, clubes y eventos</span> en tiempo real.
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xs md:max-w-md">
-          <Link href="/mapa" className="flex-1 bg-green-500 text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-green-400 transition-all active:scale-95 shadow-xl shadow-green-500/20 uppercase text-xs">
-            <MapPin size={16} /> Ir al Mapa
-          </Link>
-          <Link href="/vibes" className="flex-1 bg-zinc-900/80 backdrop-blur-md border border-white/20 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all active:scale-95 shadow-xl uppercase text-xs">
-            <Zap size={16} className="text-yellow-400" /> Ver Vibes
-          </Link>
-        </div>
+    <main className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* HERO SLIDER [cite: 2025-12-25] */}
+      <div className="absolute inset-0 z-0">
+        {images.map((img, i) => (
+          <div
+            key={i}
+            className={`absolute inset-0 transition-opacity duration-1000 ${i === currentIdx ? "opacity-40" : "opacity-0"}`}
+            style={{ backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+          />
+        ))}
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black via-black/80 to-transparent z-0 pointer-events-none" />
+      <div className="relative z-10 flex flex-col items-center justify-center h-screen px-6 text-center">
+        <h1 className="text-6xl font-black italic uppercase tracking-tighter mb-4 animate-pulse">NITVIBES</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.3em] text-zinc-400 mb-12 italic">Tu noche comienza aquí</p>
+        
+        <div className="grid grid-cols-1 gap-4 w-full max-w-xs">
+          <button onClick={() => router.push("/mapa")} className="h-16 bg-white text-black rounded-2xl font-black uppercase italic active:scale-95 transition-all">Ir al Mapa</button>
+          <button onClick={() => router.push("/vibes")} className="h-16 bg-zinc-900 border border-white/10 rounded-2xl font-black uppercase italic active:scale-95 transition-all">Ver Vibes</button>
+        </div>
+      </div>
+      <BottomNav />
     </main>
   );
-}-e \n--- ARCHIVO: ./next-env.d.ts ---
+}
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./app/globals.css ---
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 0, 0, 0;
+  --background-end-rgb: 0, 0, 0;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: black;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* --- ESTILOS PERSONALIZADOS DEL MAPA --- */
+
+/* Marcadores de Venues (Círculos con neón) */
+.venue-marker {
+  z-index: 10;
+  cursor: pointer;
+  /* La transición debe estar aquí para que sea suave al crecer y al encoger */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.venue-marker:hover {
+  transform: scale(1.2); /* Crece un 20% al pasar el mouse */
+  z-index: 20; /* Se pone por encima de todo */
+}
+
+/* Popups del mapa (Opcional, para que se vean mejor en modo oscuro) */
+.mapboxgl-popup-content {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: black !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+}
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./next-env.d.ts ---
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
 
 // NOTE: This file should not be edited
 // see https://nextjs.org/docs/basic-features/typescript for more information.
--e \n--- ARCHIVO: ./tailwind.config.ts ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./tailwind.config.ts ---
 import type { Config } from "tailwindcss";
 
 const config: Config = {
@@ -2361,7 +2371,8 @@ const config: Config = {
   },
   plugins: [require("tailwindcss-animate")],
 };
-export default config;-e \n--- ARCHIVO: ./sanity/client.ts ---
+export default config;-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./sanity/client.ts ---
 import { createClient } from "next-sanity";
 
 export const client = createClient({
@@ -2372,7 +2383,8 @@ export const client = createClient({
   apiVersion: "2024-01-01",
   useCdn: false,
 });
--e \n--- ARCHIVO: ./components/ui/button.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/ui/button.tsx ---
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -2424,7 +2436,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 )
 Button.displayName = "Button"
 
-export { Button, buttonVariants }-e \n--- ARCHIVO: ./components/ui/select.tsx ---
+export { Button, buttonVariants }-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/ui/select.tsx ---
 "use client"
 
 import * as React from "react"
@@ -2584,7 +2597,8 @@ export {
   SelectScrollUpButton,
   SelectScrollDownButton,
 }
--e \n--- ARCHIVO: ./components/ui/input.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/ui/input.tsx ---
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
@@ -2608,7 +2622,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
 )
 Input.displayName = "Input"
 
-export { Input }-e \n--- ARCHIVO: ./components/Navbar.tsx ---
+export { Input }-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/Navbar.tsx ---
 "use client";
 
 import Link from 'next/link';
@@ -2674,7 +2689,8 @@ export default function Navbar() {
       </div>
     </div>
   );
-}-e \n--- ARCHIVO: ./components/PartnerPromoStats.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/PartnerPromoStats.tsx ---
 "use client";
 import { TrendingUp, Users, Calendar } from "lucide-react";
 
@@ -2699,12 +2715,17 @@ export default function PartnerPromoStats() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./components/MapboxMap.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/MapboxMap.tsx ---
 "use client";
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAuth } from '@/context/AuthContext';
+import { ChevronLeft, Zap, ExternalLink, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot, limit, orderBy } from 'firebase/firestore';
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
@@ -2712,6 +2733,10 @@ export default function MapboxMap() {
   const mapContainer = useRef<any>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const { user } = useAuth();
+  const router = useRouter();
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+  const [activePopUp, setActivePopUp] = useState<any>(null);
+  const [recentFlashes, setRecentFlashes] = useState<any[]>([]);
 
   useEffect(() => {
     if (map.current) return; 
@@ -2719,24 +2744,46 @@ export default function MapboxMap() {
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/dark-v11',
-      center: [2.1734, 41.3851], // Barcelona
-      zoom: 13,
-      pitch: 45
+      center: [2.1734, 41.3851],
+      zoom: 14,
+      pitch: user ? 0 : 60
     });
 
     map.current.on('load', () => {
-      // CAPA 1: EL HORMIGUERO (Simulador de Agentes para Vibers/General)
-      if (!user || user.role === 'viber') {
-        // Aquí va tu lógica original del simulador que recuperamos [cite: 2025-12-25]
-        console.log("Capa Simulador Activa");
-      }
+      // CAPA VISITANTE: HORMIGUERO CYAN [cite: 2025-12-25]
+      if (!user) {
+        const agents = Array.from({ length: 150 }).map((_, i) => ({
+          type: 'Feature',
+          id: i,
+          geometry: { type: 'Point', coordinates: [2.1734 + (Math.random()-0.5)*0.02, 41.3851 + (Math.random()-0.5)*0.02] }
+        }));
+        map.current?.addSource('agents', { type: 'geojson', data: { type: 'FeatureCollection', features: agents } as any });
+        map.current?.addLayer({
+          id: 'agents-layer', type: 'circle', source: 'agents',
+          paint: { 'circle-radius': 2, 'circle-color': '#00ffff', 'circle-opacity': 0.6 }
+        });
 
-      // CAPA 2: VENUES (Capa persistente para todos)
-      // Dibujamos los puntos de Sala Apolo y otros locales desde Firebase [cite: 2025-12-25]
-      
-      // CAPA 3: ADMIN/GOV (Solo si el rol coincide)
-      if (user?.role === 'gov' || user?.role === 'team') {
-        console.log("Capa de Gestión Activa");
+        // LISTENER DE FLASH ACTIONS PARA POP-UPS (Visitante) [cite: 2025-12-25]
+        const q = query(
+          collection(db, "venues"), 
+          where("hasFlash", "==", true),
+          limit(10)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          const flashes: any[] = [];
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === "modified" || change.type === "added") {
+              const data = change.doc.data();
+              // Disparar Pop-up de 3 a 5 segundos [cite: 2025-12-25]
+              setActivePopUp({ id: change.doc.id, ...data });
+              setTimeout(() => setActivePopUp(null), 4000); 
+            }
+          });
+          snapshot.forEach(doc => flashes.push({ id: doc.id, ...doc.data() }));
+          setRecentFlashes(flashes);
+        });
+        return () => unsubscribe();
       }
     });
   }, [user]);
@@ -2744,13 +2791,62 @@ export default function MapboxMap() {
   return (
     <div className="relative w-full h-full">
       <div ref={mapContainer} className="absolute inset-0" />
-      <div className="absolute top-4 left-4 bg-purple-600 text-[10px] font-black uppercase p-2 rounded-lg italic animate-pulse">
-        MAPA PÚBLICO: SIMULADOR ACTIVO
+      
+      {/* POP-UP FLASH (EFÍMERO 3-5s) [cite: 2025-12-25] */}
+      {activePopUp && !user && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 animate-in zoom-in slide-in-from-top duration-500">
+          <div className="bg-pink-600 text-white px-6 py-3 rounded-full shadow-2xl shadow-pink-500/40 flex items-center gap-3 border border-white/20">
+            <Zap size={18} className="fill-current animate-pulse" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase italic leading-none">{activePopUp.name}</span>
+              <span className="text-sm font-black uppercase italic leading-none">{activePopUp.flashMessage}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TRIGGER SIDE MENU [cite: 2025-12-25] */}
+      {!user && (
+        <button 
+          onClick={() => setIsSideMenuOpen(true)}
+          className="absolute right-0 top-1/2 -translate-y-1/2 bg-zinc-900 border-l border-t border-b border-white/10 p-2 rounded-l-xl text-pink-500 shadow-xl z-40 active:scale-95 transition-all"
+        >
+          <ChevronLeft size={24} />
+        </button>
+      )}
+
+      {/* SIDE MENU (Visitante) [cite: 2025-12-25] */}
+      <div className={`absolute top-0 right-0 h-full w-80 bg-zinc-950/95 backdrop-blur-xl transition-transform duration-500 z-[60] border-l border-white/10 ${isSideMenuOpen ? "translate-x-0" : "translate-x-full"}`}>
+        <div className="p-8 h-full flex flex-col">
+          <button onClick={() => setIsSideMenuOpen(false)} className="mb-8 text-zinc-500 flex items-center gap-2 text-[10px] font-black uppercase italic"><X size={16} /> Cerrar Historial</button>
+          
+          <button onClick={() => router.push("/perfil")} className="w-full bg-gradient-to-r from-pink-600 to-purple-700 text-[11px] font-black uppercase italic p-5 rounded-2xl mb-10 leading-tight shadow-lg shadow-pink-500/20 active:scale-95 transition-all">
+            Accede o regístrate para beneficiarte de las promociones
+          </button>
+
+          <h3 className="text-[10px] font-black uppercase italic text-pink-500 mb-6 tracking-[0.2em]">Últimas Acciones Flash</h3>
+          
+          <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+            {recentFlashes.length > 0 ? recentFlashes.map((flash) => (
+              <div key={flash.id} className="bg-zinc-900/50 p-5 rounded-[1.5rem] border border-white/5 group hover:border-pink-500/30 transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[9px] font-black uppercase italic text-zinc-500">{flash.name}</span>
+                  <Zap size={12} className="text-pink-500" />
+                </div>
+                <p className="text-xs font-black uppercase italic text-white leading-tight">{flash.flashMessage}</p>
+                <p className="text-[14px] font-black italic text-pink-500 mt-2">{flash.flashPrice}€</p>
+              </div>
+            )) : (
+              <p className="text-[10px] font-bold text-zinc-600 uppercase italic text-center pt-10">Buscando energía en la ciudad...</p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
--e \n--- ARCHIVO: ./components/NearbyUsersCounter.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/NearbyUsersCounter.tsx ---
 "use client";
 import { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -2799,7 +2895,8 @@ export default function NearbyUsersCounter({ venueLat, venueLng }: Props) {
     </div>
   );
 }
--e \n--- ARCHIVO: ./components/BottomNav.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/BottomNav.tsx ---
 "use client";
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -2825,7 +2922,8 @@ export default function BottomNav() {
   // Menú público para anónimos [cite: 2025-12-25]
   return <PublicNav />;
 }
--e \n--- ARCHIVO: ./components/navigation/PublicNav.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/navigation/PublicNav.tsx ---
 "use client";
 import React from "react";
 import Link from "next/link";
@@ -2859,7 +2957,8 @@ export default function PublicNav() {
     </nav>
   );
 }
--e \n--- ARCHIVO: ./components/navigation/TeamNav.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/navigation/TeamNav.tsx ---
 "use client";
 import React from "react";
 import Link from "next/link";
@@ -2888,7 +2987,8 @@ export default function TeamNav() {
     </nav>
   );
 }
--e \n--- ARCHIVO: ./components/navigation/ViberNav.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/navigation/ViberNav.tsx ---
 "use client";
 import React from "react";
 import Link from "next/link";
@@ -2929,7 +3029,8 @@ export default function ViberNav() {
     </nav>
   );
 }
--e \n--- ARCHIVO: ./components/navigation/PartnerNav.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/navigation/PartnerNav.tsx ---
 "use client";
 import React from "react";
 import Link from "next/link";
@@ -2958,7 +3059,8 @@ export default function PartnerNav() {
     </nav>
   );
 }
--e \n--- ARCHIVO: ./components/Footer.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/Footer.tsx ---
 export default function Footer() {
   return (
     <footer className="w-full py-6 px-4 border-t border-white/10 bg-black text-center mt-auto mb-16">
@@ -2967,7 +3069,8 @@ export default function Footer() {
       </p>
     </footer>
   );
-}-e \n--- ARCHIVO: ./components/map/layers/PublicLayer.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/map/layers/PublicLayer.tsx ---
 "use client";
 import React from "react";
 // Aquí iría la lógica de:
@@ -2979,7 +3082,8 @@ export default function PublicLayer() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./components/map/layers/ViberLayer.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/map/layers/ViberLayer.tsx ---
 "use client";
 import React from "react";
 // Aquí iría la lógica de Google Maps para mostrar:
@@ -2992,7 +3096,8 @@ export default function ViberLayer() {
     </div>
   );
 }
--e \n--- ARCHIVO: ./components/FlashPromoList.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/FlashPromoList.tsx ---
 "use client";
 
 import { Zap } from "lucide-react";
@@ -3038,7 +3143,8 @@ export default function FlashPromoList() {
       </div>
     </div>
   );
-}-e \n--- ARCHIVO: ./components/UGCVibesList.tsx ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/UGCVibesList.tsx ---
 "use client";
 
 import React from 'react';
@@ -3085,7 +3191,8 @@ export default function UGCVibesList({ userId, excludeUserId }: UGCVibesListProp
     </div>
   );
 }
--e \n--- ARCHIVO: ./components/HeroCarousel.tsx ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components/HeroCarousel.tsx ---
 "use client";
 
 import { useEffect, useState } from "react";
@@ -3127,7 +3234,8 @@ export function HeroCarousel() {
       <div className="absolute inset-0 bg-black/50" />
     </div>
   );
-}-e \n--- ARCHIVO: ./public/manifest.json ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./public/manifest.json ---
 {
   "name": "Nitvibes PWA",
   "short_name": "Nitvibes",
@@ -3148,7 +3256,8 @@ export function HeroCarousel() {
       "type": "image/png"
     }
   ]
-}-e \n--- ARCHIVO: ./package-lock.json ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./package-lock.json ---
 {
   "name": "nitvibes-pwa",
   "version": "0.1.0",
@@ -25665,7 +25774,8 @@ export function HeroCarousel() {
     }
   }
 }
--e \n--- ARCHIVO: ./package.json ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./package.json ---
 {
   "name": "nitvibes-pwa",
   "version": "0.1.0",
@@ -25711,7 +25821,8 @@ export function HeroCarousel() {
     "typescript": "^5"
   }
 }
--e \n--- ARCHIVO: ./sanity.config.ts ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./sanity.config.ts ---
 'use client'
 
 import { defineConfig } from 'sanity'
@@ -25768,7 +25879,8 @@ export default defineConfig({
     // Hemos eliminado visionTool() que es lo que rompía todo
   ],
 })
--e \n--- ARCHIVO: ./lib/useSimulation.ts ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./lib/useSimulation.ts ---
 
 import { useState, useEffect, useRef } from 'react';
 import * as turf from '@turf/turf';
@@ -25986,7 +26098,8 @@ export const useSimulation = (venues: Venue[], userCount: number) => {
 
   return { users, venueCounts, clock };
 };
--e \n--- ARCHIVO: ./lib/firebase.ts ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./lib/firebase.ts ---
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -26008,13 +26121,15 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-export { app, auth, db, storage };-e \n--- ARCHIVO: ./lib/utils.ts ---
+export { app, auth, db, storage };-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./lib/utils.ts ---
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}-e \n--- ARCHIVO: ./lib/metroData.ts ---
+}-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./lib/metroData.ts ---
 
 // Coordenadas reales de paradas clave de Metro BCN y Hospitalet
 export const METRO_STATIONS = [
@@ -26035,7 +26150,8 @@ export const METRO_STATIONS = [
   { id: 'm_collblanc', name: 'Collblanc (L5)', lat: 41.3776, lng: 2.1189 }, // Zona Norte Hospi
   { id: 'm_can_tries', name: 'Can Tries (L9)', lat: 41.3600, lng: 2.1240 },
 ];
--e \n--- ARCHIVO: ./lib/constants.ts ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./lib/constants.ts ---
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login', // Genérico (aunque ahora usamos específicos)
@@ -26069,7 +26185,8 @@ export const DASHBOARD_ROUTES = {
   GOV: ROUTES.GOV_DASHBOARD,
   VIBER: ROUTES.VIBER_DASHBOARD
 };
--e \n--- ARCHIVO: ./lib/translations.ts ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./lib/translations.ts ---
 export const translations = {
   es: {
     hero_title: "Descubre la Noche",
@@ -26089,7 +26206,124 @@ export const translations = {
   }
 };
 
-export type Language = 'es' | 'en';-e \n--- ARCHIVO: ./components.json ---
+export type Language = 'es' | 'en';-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./migrate.js ---
+const fs = require('fs');
+const path = require('path');
+
+// 1. CONFIGURACIÓN DE RUTAS
+const root = process.cwd();
+const appDir = path.join(root, 'app');
+const compDir = path.join(root, 'components');
+
+console.log('🚀 INICIANDO MIGRACIÓN CON NODE.JS...');
+console.log(`📂 Directorio base: ${root}`);
+
+// Función para crear carpetas recursivamente
+const createDir = (dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+    console.log(`✅ Carpeta creada: ${path.relative(root, dirPath)}`);
+  }
+};
+
+// Función para mover archivos
+const moveFile = (oldPath, newPath) => {
+  if (fs.existsSync(oldPath)) {
+    fs.renameSync(oldPath, newPath);
+    console.log(`🚚 Movido: ${path.basename(oldPath)} -> ${path.relative(root, newPath)}`);
+  } else {
+    console.log(`⚠️ No encontrado (saltando): ${path.relative(root, oldPath)}`);
+  }
+};
+
+// Función para mover contenido de carpetas
+const moveFolderContent = (src, dest) => {
+  if (fs.existsSync(src)) {
+    const files = fs.readdirSync(src);
+    files.forEach(file => {
+      moveFile(path.join(src, file), path.join(dest, file));
+    });
+    // Intentar borrar carpeta vieja si quedó vacía
+    try { fs.rmdirSync(src); } catch (e) {}
+  }
+};
+
+// Función para reemplazar texto en archivos (sed)
+const replaceInFile = (filePath, searchValue, replaceValue) => {
+  if (fs.existsSync(filePath)) {
+    let content = fs.readFileSync(filePath, 'utf8');
+    if (content.includes(searchValue)) {
+      content = content.split(searchValue).join(replaceValue);
+      fs.writeFileSync(filePath, content, 'utf8');
+      console.log(`🔧 Actualizado código en: ${path.relative(root, filePath)}`);
+    }
+  }
+};
+
+// --- EJECUCIÓN ---
+
+// A. Crear Estructura (roles)
+const rolesPath = path.join(appDir, '(roles)');
+createDir(path.join(rolesPath, 'team/dashboard'));
+createDir(path.join(rolesPath, 'team/components'));
+createDir(path.join(rolesPath, 'partner/dashboard'));
+createDir(path.join(rolesPath, 'partner/components'));
+createDir(path.join(rolesPath, 'viber/dashboard'));
+createDir(path.join(rolesPath, 'viber/components'));
+createDir(path.join(rolesPath, 'gov/dashboard'));
+createDir(path.join(rolesPath, 'gov/components'));
+
+// B. Mover Dashboards (Pages)
+moveFile(path.join(appDir, 'admin/page.tsx'), path.join(rolesPath, 'team/dashboard/page.tsx'));
+moveFile(path.join(appDir, 'business/page.tsx'), path.join(rolesPath, 'partner/dashboard/page.tsx'));
+moveFile(path.join(appDir, 'gov/page.tsx'), path.join(rolesPath, 'gov/dashboard/page.tsx'));
+moveFile(path.join(appDir, 'viber/page.tsx'), path.join(rolesPath, 'viber/dashboard/page.tsx'));
+
+// C. Mover Componentes de Team
+const oldTeamCompPath = path.join(compDir, 'dashboard/team');
+const newTeamCompPath = path.join(rolesPath, 'team/components');
+moveFolderContent(oldTeamCompPath, newTeamCompPath);
+
+// Limpiar carpetas viejas de components si están vacías
+try { fs.rmdirSync(path.join(compDir, 'dashboard')); } catch (e) {}
+// Limpiar carpetas viejas de app si están vacías
+try { fs.rmdirSync(path.join(appDir, 'admin')); } catch (e) {}
+try { fs.rmdirSync(path.join(appDir, 'business')); } catch (e) {}
+try { fs.rmdirSync(path.join(appDir, 'gov')); } catch (e) {}
+try { fs.rmdirSync(path.join(appDir, 'viber')); } catch (e) {}
+
+// D. Actualizar Referencias en Código
+const perfilPage = path.join(appDir, 'perfil/page.tsx');
+const loginPage = path.join(appDir, 'login/page.tsx');
+const bottomMenu = path.join(compDir, 'BottomMenu.tsx');
+const teamDashPage = path.join(rolesPath, 'team/dashboard/page.tsx');
+
+// Actualizar Perfil
+replaceInFile(perfilPage, "'/admin'", "'/team/dashboard'");
+replaceInFile(perfilPage, "'/business'", "'/partner/dashboard'");
+replaceInFile(perfilPage, "'/gov'", "'/gov/dashboard'");
+replaceInFile(perfilPage, "'/viber'", "'/viber/dashboard'");
+
+// Actualizar Login
+replaceInFile(loginPage, "'/admin'", "'/team/dashboard'");
+replaceInFile(loginPage, "'/business'", "'/partner/dashboard'");
+replaceInFile(loginPage, "'/gov'", "'/gov/dashboard'");
+
+// Actualizar Menu
+replaceInFile(bottomMenu, "'/admin'", "'/team/dashboard'");
+replaceInFile(bottomMenu, "'/business'", "'/partner/dashboard'");
+replaceInFile(bottomMenu, "'/gov'", "'/gov/dashboard'");
+// Active states en Menu
+replaceInFile(bottomMenu, "pathname.includes('/admin')", "pathname.includes('/team')");
+replaceInFile(bottomMenu, "pathname.includes('/business')", "pathname.includes('/partner')");
+
+// Actualizar Import en Team Dashboard
+replaceInFile(teamDashPage, '@/components/dashboard/team/', '../components/');
+
+console.log('✨ ¡MIGRACIÓN COMPLETADA! ✨');
+console.log('Ahora puedes borrar el archivo migrate.js');-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./components.json ---
 {
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "new-york",
@@ -26112,7 +26346,8 @@ export type Language = 'es' | 'en';-e \n--- ARCHIVO: ./components.json ---
   },
   "registries": {}
 }
--e \n--- ARCHIVO: ./tsconfig.json ---
+-e \n--- FIN ARCHIVO ---
+-e \n--- INICIO ARCHIVO: ./tsconfig.json ---
 {
   "compilerOptions": {
     "target": "es5",
@@ -26140,12 +26375,11 @@ export type Language = 'es' | 'en';-e \n--- ARCHIVO: ./components.json ---
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
-}------------------------------------------------
-3. VARIABLES DE ENTORNO (NOMBRES, NO VALORES)
-NEXT_PUBLIC_FIREBASE_API_KEY
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-NEXT_PUBLIC_FIREBASE_PROJECT_ID
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-NEXT_PUBLIC_FIREBASE_APP_ID
-NEXT_PUBLIC_MAPBOX_TOKEN
+}-e \n--- FIN ARCHIVO ---
+------------------------------------------------
+3. REVISIÓN DE IMÁGENES EN PUBLIC
+total 1472
+-rw-r--r--@ 1 pioxonaq  staff   229K Dec 22 14:04 hero-1.jpg
+-rw-r--r--@ 1 pioxonaq  staff   246K Dec 22 14:04 hero-2.jpg
+-rw-r--r--@ 1 pioxonaq  staff   250K Dec 22 14:04 hero-3.jpg
+-rw-r--r--@ 1 pioxonaq  staff   421B Dec 22 13:54 manifest.json

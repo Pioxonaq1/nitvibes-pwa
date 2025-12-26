@@ -3,11 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 
-const images = [
-  "https://images.unsplash.com/photo-1514525253361-bee87184747b?auto=format&fit=crop&q=80&w=1000",
-  "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=1000",
-  "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&q=80&w=1000"
-];
+const images = ["/hero-1.jpg", "/hero-2.jpg", "/hero-3.jpg"];
 
 export default function HomePage() {
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -22,24 +18,25 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* HERO SLIDER [cite: 2025-12-25] */}
       <div className="absolute inset-0 z-0">
         {images.map((img, i) => (
           <div
             key={i}
-            className={`absolute inset-0 transition-opacity duration-1000 ${i === currentIdx ? "opacity-40" : "opacity-0"}`}
-            style={{ backgroundImage: `url(${img})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+            className={`absolute inset-0 transition-opacity duration-1000 bg-center bg-cover ${i === currentIdx ? "opacity-60" : "opacity-0"}`}
+            style={{ backgroundImage: `url(${img})` }}
           />
         ))}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center justify-center h-screen px-6 text-center">
-        <h1 className="text-6xl font-black italic uppercase tracking-tighter mb-4 animate-pulse">NITVIBES</h1>
-        <p className="text-xs font-bold uppercase tracking-[0.3em] text-zinc-400 mb-12 italic">Tu noche comienza aquí</p>
-        
+        <div className="space-y-2 mb-12">
+          <h1 className="text-7xl font-black italic uppercase tracking-tighter leading-none text-white">NIT<span className="text-pink-500">VIBES</span></h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-400 italic">Tu noche comienza aquí</p>
+        </div>
         <div className="grid grid-cols-1 gap-4 w-full max-w-xs">
-          <button onClick={() => router.push("/mapa")} className="h-16 bg-white text-black rounded-2xl font-black uppercase italic active:scale-95 transition-all">Ir al Mapa</button>
-          <button onClick={() => router.push("/vibes")} className="h-16 bg-zinc-900 border border-white/10 rounded-2xl font-black uppercase italic active:scale-95 transition-all">Ver Vibes</button>
+          <button onClick={() => router.push("/mapa")} className="h-16 bg-white text-black rounded-2xl font-black uppercase italic text-sm">Ir al Mapa</button>
+          <button onClick={() => router.push("/vibes")} className="h-16 bg-zinc-900/80 border border-white/10 rounded-2xl font-black uppercase italic text-sm">Ver Vibes</button>
         </div>
       </div>
       <BottomNav />

@@ -8,11 +8,8 @@ interface UserData {
   uid: string;
   email: string | null;
   nombre?: string;
-  name?: string; 
   role?: string;
   isVenue?: boolean;
-  b2BEmail?: string;
-  b2BPassword?: string;
 }
 
 interface AuthContextType {
