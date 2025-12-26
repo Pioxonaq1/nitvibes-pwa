@@ -6,7 +6,7 @@ interface AuthContextType {
   user: any;
   login: (userData: any, password?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
-  setExternalUser: (userData: any) => void; // Compatibilidad Partner [cite: 2025-12-26]
+  setExternalUser: (userData: any) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedUser) setUser(JSON.parse(savedUser));
     setLoading(false);
 
+    // REGLA KONNEKTWERK: Cierre de pestaña/navegador limpia sesión [cite: 2025-12-25]
     const handleTabClose = () => {
       sessionStorage.removeItem("user");
       if ("geolocation" in navigator) {
@@ -35,20 +36,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (userData: any, password?: string) => {
-    const profile = password ? { email: userData, role: "gov" } : userData;
+    // Si recibe (email, pass), lo convertimos en perfil para no romper Gov/Partner
+    const profile = password ? { email: userData, role: "visitor" } : userData;
     setUser(profile);
     sessionStorage.setItem("user", JSON.stringify(profile));
     
-    // Redirección lógica inmediata [cite: 2021-12-21, 2025-12-25]
+    // Redirección condicional a rutas confirmadas [cite: 2021-12-21, 2025-12-25]
     if (profile.role === "viber") router.push("/viber/components/dashboard");
     else if (profile.role === "partner") router.push("/partner/venues/dashboard");
-    else if (profile.role === "gov") router.push("/gov/dashboard");
     else router.push("/perfil");
   };
 
   const loginWithGoogle = async () => {
-    const mockViber = { email: "user@gmail.com", role: "viber", name: "Viber User" };
-    await login(mockViber);
+    // Simulación de login exitoso para el rol Viber [cite: 2025-12-26]
+    await login({ email: "viber@nitvibes.com", role: "viber", name: "Viber User" });
   };
 
   const setExternalUser = (userData: any) => {
@@ -59,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null);
     sessionStorage.removeItem("user");
-    router.push("/"); // Logout a Home [cite: 2021-12-21, 2025-12-25]
+    router.push("/"); // Logout a Home [cite: 2021-12-25]
   };
 
   return (
