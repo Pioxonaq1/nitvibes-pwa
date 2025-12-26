@@ -1,89 +1,60 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-
-export interface UserData {
-  uid: string;
-  email: string | null;
-  nombre?: string;
-  name?: string;
-  role?: string;
-  isVenue?: boolean;
-  [key: string]: any;
-}
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface AuthContextType {
-  user: UserData | null;
+  user: any;
+  login: (userData: any) => void;
+  logout: () => void;
   loading: boolean;
-  login: (email: string, pass: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  logout: () => Promise<void>;
-  setExternalUser: (data: UserData) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<UserData | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    const savedVenue = sessionStorage.getItem("venue_session");
-    if (savedVenue) {
-      setUser(JSON.parse(savedVenue));
-      setLoading(false);
-    }
+    const savedUser = sessionStorage.getItem("user");
+    if (savedUser) setUser(JSON.parse(savedUser));
+    setLoading(false);
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser && !sessionStorage.getItem("venue_session")) {
-        const docRef = doc(db, "users", firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, ...docSnap.data() } as UserData);
-        } else {
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'viber' });
-        }
-      } else if (!firebaseUser && !sessionStorage.getItem("venue_session")) {
-        setUser(null);
+    // Cierre de sesión y fin de procesos al cerrar pestaña [cite: 2025-12-25]
+    const handleTabClose = () => {
+      sessionStorage.removeItem("user");
+      // Detener procesos activos
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(() => {}); 
       }
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    };
+
+    window.addEventListener("beforeunload", handleTabClose);
+    return () => window.removeEventListener("beforeunload", handleTabClose);
   }, []);
 
-  const login = async (email: string, pass: string) => {
-    await signInWithEmailAndPassword(auth, email, pass);
+  const login = (userData: any) => {
+    setUser(userData);
+    sessionStorage.setItem("user", JSON.stringify(userData));
+    // Redirección inicial tras login
+    if (userData.role === "viber") router.push("/viber/components/dashboard");
+    else if (userData.role === "partner") router.push("/partner/venues/dashboard");
+    else router.push("/perfil");
   };
 
-  const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  };
-
-  const logout = async () => {
-    sessionStorage.removeItem("venue_session");
-    if (navigator.geolocation && (window as any).watchId) {
-      navigator.geolocation.clearWatch((window as any).watchId);
-    }
-    await signOut(auth);
+  const logout = () => {
     setUser(null);
-    window.location.href = "/";
-  };
-
-  const setExternalUser = (data: UserData) => {
-    const venueUser = { ...data, role: 'partner', isVenue: true };
-    setUser(venueUser);
-    sessionStorage.setItem("venue_session", JSON.stringify(venueUser));
+    sessionStorage.removeItem("user");
+    router.push("/"); // Regresa a HOME al cerrar sesión [cite: 2021-12-21, 2025-12-25]
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout, setExternalUser }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

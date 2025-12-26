@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Map, Ticket, Settings, User } from "lucide-react";
+import { Map, Ticket, PlusSquare, LayoutDashboard } from "lucide-react";
 
 export default function ViberNav() {
   const router = useRouter();
@@ -10,8 +10,8 @@ export default function ViberNav() {
   const items = [
     { label: "MAPA", icon: Map, path: "/mapa" },
     { label: "FLASH", icon: Ticket, path: "/viber/flash-actions" },
-    { label: "AJUSTES", icon: Settings, path: "/settings" },
-    { label: "PANEL", icon: User, path: "/perfil" },
+    { label: "SUBIR VIBE", icon: PlusSquare, path: "#" },
+    { label: "PANEL", icon: LayoutDashboard, path: "/viber/components/dashboard" },
   ];
 
   return (
@@ -22,9 +22,9 @@ export default function ViberNav() {
         return (
           <button
             key={item.label}
-            onClick={() => router.push(item.path)}
+            onClick={() => item.path !== "#" && router.push(item.path)}
             className={`flex flex-col items-center gap-1 transition-all ${
-              isActive ? "text-yellow-400 scale-110" : "text-zinc-500"
+              isActive ? "text-yellow-400 scale-110" : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
