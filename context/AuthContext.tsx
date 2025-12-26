@@ -4,7 +4,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
-interface UserData {
+export interface UserData {
   uid: string;
   email: string | null;
   nombre?: string;
@@ -30,22 +30,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedVenue = localStorage.getItem("venue_session");
+    const savedVenue = sessionStorage.getItem("venue_session");
     if (savedVenue) {
       setUser(JSON.parse(savedVenue));
       setLoading(false);
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser && !localStorage.getItem("venue_session")) {
+      if (firebaseUser && !sessionStorage.getItem("venue_session")) {
         const docRef = doc(db, "users", firebaseUser.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           setUser({ uid: firebaseUser.uid, email: firebaseUser.email, ...docSnap.data() } as UserData);
         } else {
-          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: "viber" });
+          setUser({ uid: firebaseUser.uid, email: firebaseUser.email, role: 'viber' });
         }
-      } else if (!firebaseUser && !localStorage.getItem("venue_session")) {
+      } else if (!firebaseUser && !sessionStorage.getItem("venue_session")) {
         setUser(null);
       }
       setLoading(false);
@@ -63,16 +63,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
-    localStorage.removeItem("venue_session");
+    sessionStorage.removeItem("venue_session");
+    if (navigator.geolocation && (window as any).watchId) {
+      navigator.geolocation.clearWatch((window as any).watchId);
+    }
     await signOut(auth);
     setUser(null);
     window.location.href = "/";
   };
 
   const setExternalUser = (data: UserData) => {
-    const venueUser = { ...data, role: "partner", isVenue: true };
+    const venueUser = { ...data, role: 'partner', isVenue: true };
     setUser(venueUser);
-    localStorage.setItem("venue_session", JSON.stringify(venueUser));
+    sessionStorage.setItem("venue_session", JSON.stringify(venueUser));
   };
 
   return (
