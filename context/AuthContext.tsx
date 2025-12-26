@@ -6,6 +6,7 @@ interface AuthContextType {
   user: any;
   login: (userData: any, password?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  setExternalUser: (userData: any) => void; // Compatibilidad Partner [cite: 2025-12-26]
   logout: () => void;
   loading: boolean;
 }
@@ -34,11 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (userData: any, password?: string) => {
-    // Si viene como (email, pass), simulamos el objeto para no romper páginas antiguas
     const profile = password ? { email: userData, role: "gov" } : userData;
     setUser(profile);
     sessionStorage.setItem("user", JSON.stringify(profile));
     
+    // Redirección lógica inmediata [cite: 2021-12-21, 2025-12-25]
     if (profile.role === "viber") router.push("/viber/components/dashboard");
     else if (profile.role === "partner") router.push("/partner/venues/dashboard");
     else if (profile.role === "gov") router.push("/gov/dashboard");
@@ -46,18 +47,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithGoogle = async () => {
-    const mockGoogleUser = { email: "user@google.com", role: "viber", name: "Google User" };
-    await login(mockGoogleUser);
+    const mockViber = { email: "user@gmail.com", role: "viber", name: "Viber User" };
+    await login(mockViber);
+  };
+
+  const setExternalUser = (userData: any) => {
+    setUser(userData);
+    sessionStorage.setItem("user", JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
     sessionStorage.removeItem("user");
-    router.push("/");
+    router.push("/"); // Logout a Home [cite: 2021-12-21, 2025-12-25]
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, setExternalUser, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
