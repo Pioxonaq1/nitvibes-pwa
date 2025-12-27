@@ -6,7 +6,6 @@ interface AuthContextType {
   user: any;
   login: (userData: any, password?: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
-  setExternalUser: (userData: any) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -31,28 +30,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (userData: any, password?: string) => {
-    const profile = password ? { email: userData, role: "viber" } : userData;
-    // Forzar rol según email para test de Team/Partner [cite: 157, 170]
-    if (profile.email === "contact@konnektwerk.com") profile.role = "team";
-    if (profile.email === "apolo@test.com") profile.role = "partner";
+    // Si es login manual, determinamos rol por email o hint 
+    let profile = userData;
+    if (password) {
+      const role = userData.includes("konnektwerk") ? "team" : 
+                   userData.includes("test") ? "partner" : "viber";
+      profile = { email: userData, role };
+    }
     
     setUser(profile);
     sessionStorage.setItem("user", JSON.stringify(profile));
     
-    // Redirecciones lógicas sin carpetas 'components' en la URL [cite: 11, 140]
-    if (profile.role === "viber") router.push("/viber/dashboard");
-    else if (profile.role === "partner") router.push("/partner/venues/dashboard");
-    else if (profile.role === "team") router.push("/team/dashboard");
-    else router.push("/");
+    // Rutas canónicas sin '/components/' [cite: 1]
+    const routes = {
+      viber: "/viber/dashboard",
+      partner: "/partner/venues/dashboard",
+      team: "/team/dashboard",
+      gov: "/gov/dashboard"
+    };
+    
+    router.push(routes[profile.role as keyof typeof routes] || "/");
   };
 
   const loginWithGoogle = async () => {
-    await login({ email: "viber@nitvibes.com", role: "viber", name: "Viber Barcelona" });
-  };
-
-  const setExternalUser = (userData: any) => {
-    setUser(userData);
-    sessionStorage.setItem("user", JSON.stringify(userData));
+    await login({ email: "viber@barcelona.com", role: "viber", name: "Viber User" });
   };
 
   const logout = () => {
@@ -62,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, setExternalUser, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
