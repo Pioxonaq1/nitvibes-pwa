@@ -11,7 +11,7 @@ export default function ViberNav() {
     { label: "MAPA", icon: Map, path: "/mapa" },
     { label: "FLASH", icon: Ticket, path: "/viber/flash-actions" },
     { label: "SUBIR VIBE", icon: PlusSquare, path: "#" },
-    { label: "PANEL", icon: LayoutDashboard, path: "/viber/components/dashboard" },
+    { label: "PANEL", icon: LayoutDashboard, path: "/viber/dashboard" },
   ];
 
   return (
